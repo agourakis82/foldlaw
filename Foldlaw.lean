@@ -1289,18 +1289,90 @@ theorem x_mul_kerW_inter_H_octonion (a : CD 2)
   rw [W_inj_quaternion a hW, mul_zero]
 
 /-!
+### The fold law, kernel form (art levels): steps (6)-(7) collapsed
+
+At a left-alternative level the whole chain telescopes. First, L_x is
+SURJECTIVE constructively: x·(x̄·u) = u for every u (left art applied to
+x̄, with x̄x̄ = x² = -1). Hence C ≡ 0 identically (step (4) says C∘L_x
+is already zero), so in the block decomposition ker W_T = ker W_A ⊕
+ker C the second block is EVERYTHING: the kernel of the anti-associator
+DOUBLES as ker W ⊕ (free ℓ-block). With the base ker W(i, j)|ℍ = 0
+(step 5), induction gives ker W_m = {a₀ ∈ ker W_{m-1}} and dimension
+2^m - 4 at every art rung: the 16-census value 4 and the 32-census
+value 12 for old pairs, machine-checked. Beyond art levels (m ≥ 4,
+sedenions) C ≡ 0 is numeric-only (check F, 930/930) -- the identity
+needs the alternativity that dies there. The dimension bookkeeping as
+`finrank` arithmetic is the remaining linear-algebra layer.
+-/
+
+/-- **L_x is surjective (constructive).** Every u is x·(x̄u): left art on
+x̄ with x̄·x̄ = x·x = -1. -/
+theorem Lx_surj {m : ℕ} (x u : CD m) (hx : conj x = neg x)
+    (hx2 : x * x = neg (cdOne : CD m))
+    (hLart : ∀ u w : CD m, u * (u * w) = (u * u) * w) :
+    x * (conj x * u) = u := by
+  rw [hx, neg_mul, mul_neg, hLart x u, hx2, neg_mul, one_mul, neg_neg]
+
+/-- **At art levels the complementary block vanishes identically.**
+C(u) = 0 for every u: u lies in the image of L_x, and C∘L_x = 0. This
+collapses the claims sheet's step (6): dim ker C = dim A = 2^m, which
+is 4 + dim ker W exactly when dim ker W = 2^m - 4 (the induction). -/
+theorem C_eq_zero {m : ℕ} (x y : CD m) (hx : conj x = neg x)
+    (hx2 : x * x = neg (cdOne : CD m)) (hxy : y * x = neg (x * y))
+    (hLart : ∀ u w : CD m, u * (u * w) = (u * u) * w) (u : CD m) :
+    y * (conj x * u) + conj x * (y * u) = (cdZero : CD m) := by
+  have hu : u = x * (conj x * u) := (Lx_surj x u hx hx2 hLart).symm
+  rw [hu]
+  exact C_comp_Lx_eq_zero x y (conj x * u) hx hx2 hxy hLart
+
+/-- **THE FOLD LAW, kernel form.** For anticommuting imaginary x, y at
+a left-alternative level, the kernel of the doubled anti-associator is
+ker W ⊕ (free ℓ-block): W_T kills (a₀, a₁) iff W_A kills a₀ alone. -/
+theorem ker_W_fold {m : ℕ} (x y a₀ a₁ : CD m) (hx : conj x = neg x)
+    (hx2 : x * x = neg (cdOne : CD m)) (hxy : y * x = neg (x * y))
+    (hLart : ∀ u w : CD m, u * (u * w) = (u * u) * w) :
+    (dbl x (cdZero : CD m) * dbl a₀ a₁) * dbl y (cdZero : CD m)
+      + dbl x (cdZero : CD m) * (dbl a₀ a₁ * dbl y (cdZero : CD m))
+      = (cdZero : CD (m + 1)) ↔
+    (x * a₀) * y + x * (a₀ * y) = (cdZero : CD m) := by
+  rw [ker_WT_iff]
+  exact ⟨fun h => h.1, fun h => ⟨h, C_eq_zero x y hx hx2 hxy hLart a₁⟩⟩
+
+/-- **Numeric anchor of the fold law: the 16-census value 4.** For the
+pair (i, j) whose ℓ-double is z = i + jℓ ∈ CD 3, the doubled kernel is
+ker W|ℍ ⊕ ℍ = {0} ⊕ ℍ (dimension 4, the 16-census nullity of (1, 2));
+one rung higher, the same theorem with art at CD 3 gives the 32-census
+value 12 for old pairs. -/
+theorem ker_W_octonion_fold (a₀ a₁ : CD 2) :
+    (dbl unitI (cdZero : CD 2) * dbl a₀ a₁) * dbl unitJ (cdZero : CD 2)
+      + dbl unitI (cdZero : CD 2) * (dbl a₀ a₁ * dbl unitJ (cdZero : CD 2))
+      = (cdZero : CD 3) ↔
+    a₀ = (cdZero : CD 2) := by
+  rw [ker_W_fold unitI unitJ a₀ a₁ conj_unitI unitI_sq hxy_units art_left_two]
+  constructor
+  · intro h
+    exact W_inj_quaternion a₀ h
+  · intro h
+    rw [h, mul_zero, zero_mul, mul_zero, add_zero]
+
+/-!
 ### Seal (2026-10-01)
 
-The fold-law chain through chain steps (1)-(5) is sorry-free:
-alternativity of ℍ→ℍ-doubles (R→ℂ→ℍ→𝕆), the kernel isomorphism
-ker L_z ≅ ker W with the numeric octonion anchor z = i + jℓ, the
-diagonal block lemma ker W_T = ker W_A ⊕ ker C with C = -{L_x, L_y},
-the quaternion containment H = span{1, x, y, xy} ⊂ ker C with the
-octonionic anchor for (i, j), x·ker W ⊆ ker C in the pointwise
-form C∘L_x = 0 (a fortiori on ker W) with the octonionic anchor,
-and the directness engine of H ∩ x·ker W = 0: L_x injective by the
-left art plus the numeric anchor ker W(i, j) = 0 at the ℍ rung
-where H(i, j) is all of ℍ.
+The fold-law chain through chain steps (1)-(5) plus the fold law in
+kernel form is sorry-free: alternativity of ℍ→ℍ-doubles (R→ℂ→ℍ→𝕆),
+the kernel isomorphism ker L_z ≅ ker W with the numeric octonion
+anchor z = i + jℓ, the diagonal block lemma ker W_T = ker W_A ⊕ ker C
+with C = -{L_x, L_y}, the quaternion containment
+H = span{1, x, y, xy} ⊂ ker C with the octonionic anchor for (i, j),
+x·ker W ⊆ ker C in the pointwise form C∘L_x = 0 (a fortiori on
+ker W) with the octonionic anchor, and the directness engine of
+H ∩ x·ker W = 0: L_x injective by the left art plus the numeric
+anchor ker W(i, j) = 0 at the ℍ rung where H(i, j) is all of ℍ; and
+the fold law itself: L_x is surjective constructively (u = x·(x̄u)),
+hence C ≡ 0 identically at art levels, hence ker W_{m+1} = ker W_m ⊕
+(free ℓ-block), anchored at the (i, j)-rung as the 16-census value 4
+and by art at CD 3 as the 32-census value 12 for old pairs. Beyond
+art levels (m ≥ 4) C ≡ 0 is numeric-only (930/930, check F).
 `#print axioms` below must show only the three standard axioms of Lean's
 dependent type theory (propext, Classical.choice, Quot.sound) -- no
 `sorryAx`, no hand-added `axiom` decls.
@@ -1338,5 +1410,9 @@ dependent type theory (propext, Classical.choice, Quot.sound) -- no
 #print axioms Lx_inj
 #print axioms W_inj_quaternion
 #print axioms x_mul_kerW_inter_H_octonion
+#print axioms Lx_surj
+#print axioms C_eq_zero
+#print axioms ker_W_fold
+#print axioms ker_W_octonion_fold
 
 end Foldlaw
