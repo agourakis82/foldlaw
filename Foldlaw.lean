@@ -1535,6 +1535,271 @@ instance cdModule {m : ℕ} : Module ℝ (CD m) where
   add_smul := add_smul'
 
 /-!
+### The finrank layer, phase B: the tower as linear maps and its dimension
+
+Left/right multiplication are linear (the scalar-passes-through lemmas
+of phase A are exactly their `map_smul'`), so W_A and W_T assemble from
+them with zero proof burden. The doubling dbl is a linear bijection
+CD m × CD m ≃ CD (m+1), so finrank (CD m) = 2^m by induction. With
+Module.Finite registered, rank-nullity applies.
+-/
+
+/-- Left multiplication as a genuine linear map. -/
+def mulLeft {m : ℕ} (x : CD m) : CD m →ₗ[ℝ] CD m where
+  toFun a := x * a
+  map_add' a b := mul_add' x a b
+  map_smul' r a := smul_mul_right r x a
+
+/-- Right multiplication as a genuine linear map. -/
+def mulRight {m : ℕ} (y : CD m) : CD m →ₗ[ℝ] CD m where
+  toFun a := a * y
+  map_add' a b := add_mul' y a b
+  map_smul' r a := smul_mul_left r a y
+
+/-- The diagonal anti-associator W_A a = (x·a)·y + x·(a·y), linear in a. -/
+def WA {m : ℕ} (x y : CD m) : CD m →ₗ[ℝ] CD m :=
+  (mulRight y).comp (mulLeft x) + (mulLeft x).comp (mulRight y)
+
+/-- The doubled anti-associator W_T on CD (m+1), with x, y embedded
+as real pairs. -/
+def WT {m : ℕ} (x y : CD m) : CD (m + 1) →ₗ[ℝ] CD (m + 1) :=
+  (mulRight (dbl y (cdZero : CD m))).comp (mulLeft (dbl x (cdZero : CD m)))
+    + (mulLeft (dbl x (cdZero : CD m))).comp (mulRight (dbl y (cdZero : CD m)))
+
+/-- The doubling as a linear map. -/
+def cdPairLm {m : ℕ} : CD m × CD m →ₗ[ℝ] CD (m + 1) where
+  toFun p := dbl p.1 p.2
+  map_add' p q := rfl
+  map_smul' r p := rfl
+
+theorem cdPairLm_injective {m : ℕ} : Function.Injective (cdPairLm (m := m)) := by
+  intro a b h
+  obtain ⟨a₁, a₂⟩ := a
+  obtain ⟨b₁, b₂⟩ := b
+  have h' : dbl a₁ a₂ = dbl b₁ b₂ := h
+  injection h' with hidx h1 h2
+  exact Prod.ext h1 h2
+
+theorem cdPairLm_surjective {m : ℕ} : Function.Surjective (cdPairLm (m := m)) := by
+  intro v
+  cases v with
+  | dbl a b => exact ⟨(a, b), rfl⟩
+
+/-- The pair-of-levels form: W_T read through the doubling bijection. -/
+def WTP {m : ℕ} (x y : CD m) : CD m × CD m →ₗ[ℝ] CD (m + 1) :=
+  (WT x y).comp cdPairLm
+
+/-- Embedding the level-m anti-associator into level m+1 reproduces
+the doubled anti-associator of level m, definitionally. -/
+theorem WA_eq_WT_embed {m : ℕ} (x y : CD m) :
+    WA (dbl x (cdZero : CD m)) (dbl y (cdZero : CD m)) = WT x y := rfl
+
+/-- The inverse of the doubling, as a linear map. -/
+def cdUnpair {m : ℕ} : CD (m + 1) → CD m × CD m
+  | dbl a b => (a, b)
+
+def cdUnpairLm {m : ℕ} : CD (m + 1) →ₗ[ℝ] CD m × CD m where
+  toFun := cdUnpair
+  map_add' v w := by
+    cases v with
+    | dbl x y =>
+      cases w with
+      | dbl u z => rfl
+  map_smul' r v := by
+    cases v with
+    | dbl x y => rfl
+
+theorem cdUnpair_injective {m : ℕ} : Function.Injective (cdUnpair (m := m)) := by
+  intro a b h
+  cases a with
+  | dbl x y =>
+    cases b with
+    | dbl u z =>
+      have hp : (x, y) = (u, z) := h
+      obtain ⟨h1, h2⟩ := Prod.ext_iff.mp hp
+      exact congrArg₂ dbl h1 h2
+
+theorem cdUnpair_surjective {m : ℕ} : Function.Surjective (cdUnpair (m := m)) := by
+  intro p
+  obtain ⟨a, b⟩ := p
+  exact ⟨dbl a b, rfl⟩
+
+/-- The doubling bijection as a linear equivalence. -/
+noncomputable def cdSuccEquiv {m : ℕ} : CD (m + 1) ≃ₗ[ℝ] CD m × CD m :=
+  LinearEquiv.ofBijective cdUnpairLm ⟨cdUnpair_injective, cdUnpair_surjective⟩
+
+/-- Level zero is the ground field. -/
+def cdZeroRe (a : CD 0) : ℝ := match a with | zero r => r
+
+def cdZeroMap : CD 0 →ₗ[ℝ] ℝ where
+  toFun := cdZeroRe
+  map_add' a b := by
+    cases a with
+    | zero r =>
+      cases b with
+      | zero s => rfl
+  map_smul' r a := by
+    cases a with
+    | zero s => rfl
+
+theorem cdZeroMap_injective : Function.Injective (cdZeroMap : CD 0 → ℝ) := by
+  intro a b h
+  cases a with
+  | zero r =>
+    cases b with
+    | zero s =>
+      have h' : r = s := h
+      exact congrArg zero h'
+
+theorem cdZeroMap_surjective : Function.Surjective (cdZeroMap : CD 0 → ℝ) := by
+  intro r
+  exact ⟨zero r, rfl⟩
+
+noncomputable def cdZeroEquiv : CD 0 ≃ₗ[ℝ] ℝ :=
+  LinearEquiv.ofBijective cdZeroMap ⟨cdZeroMap_injective, cdZeroMap_surjective⟩
+
+instance cdFinite {m : ℕ} : Module.Finite ℝ (CD m) := by
+  induction m with
+  | zero => exact Module.Finite.equiv cdZeroEquiv.symm
+  | succ n ih =>
+      haveI := ih
+      exact Module.Finite.equiv (cdSuccEquiv (m := n)).symm
+
+/-- **Dimension of the tower.** finrank (CD m) = 2^m: every doubling
+doubles the dimension, and CD 0 is ℝ. -/
+theorem finrank_cd (m : ℕ) : Module.finrank ℝ (CD m) = 2 ^ m := by
+  induction m with
+  | zero =>
+    rw [LinearEquiv.finrank_eq cdZeroEquiv, Module.finrank_self, pow_zero]
+  | succ n ih =>
+    rw [LinearEquiv.finrank_eq cdSuccEquiv, Module.finrank_prod, ih,
+      pow_succ, Nat.mul_two]
+
+/-!
+### The finrank layer, phase C: the fold law as an equation between numbers
+
+Rank-nullity turns the kernel decomposition of `ker_W_fold` into the
+numeric fold law: dim ker W_{m+1} = dim ker W_m + 2^m at every
+left-alternative rung. With the base dim ker W(i, j)|ℍ = 0 (step 5)
+this yields the census values machine-checked: 4 at the octonions
+(16-census, pair (1,2)) and 12 at the sedenions (32-census).
+-/
+
+/-- Kernel decomposition through the pairing: W_T kills (a₀, a₁) iff
+W_A kills a₀ -- the `ker_W_fold` Iff, read as a submodule identity. -/
+theorem ker_WTP_eq {m : ℕ} (x y : CD m)
+    (hx : conj x = neg x) (hx2 : x * x = neg (cdOne : CD m))
+    (hxy : y * x = neg (x * y))
+    (hLart : ∀ u w : CD m, u * (u * w) = (u * u) * w) :
+    LinearMap.ker (WTP x y)
+      = LinearMap.ker ((WA x y).comp (LinearMap.fst ℝ (CD m) (CD m))) := by
+  ext p
+  constructor
+  · intro h
+    exact LinearMap.mem_ker.mpr
+      ((ker_W_fold x y p.1 p.2 hx hx2 hxy hLart).mp (LinearMap.mem_ker.mp h))
+  · intro h
+    exact LinearMap.mem_ker.mpr
+      ((ker_W_fold x y p.1 p.2 hx hx2 hxy hLart).mpr (LinearMap.mem_ker.mp h))
+
+/-- **THE FOLD LAW, numeric form.** dim ker W_{m+1} = dim ker W_m + 2^m
+at every left-alternative rung. -/
+theorem finrank_ker_W_fold {m : ℕ} (x y : CD m)
+    (hx : conj x = neg x) (hx2 : x * x = neg (cdOne : CD m))
+    (hxy : y * x = neg (x * y))
+    (hLart : ∀ u w : CD m, u * (u * w) = (u * u) * w) :
+    Module.finrank ℝ (LinearMap.ker (WT x y))
+      = Module.finrank ℝ (LinearMap.ker (WA x y)) + 2 ^ m := by
+  have h1 := ker_WTP_eq x y hx hx2 hxy hLart
+  have h2 : LinearMap.range ((WA x y).comp (LinearMap.fst ℝ (CD m) (CD m)))
+      = LinearMap.range (WA x y) := by
+    ext v
+    constructor
+    · rintro ⟨p, hp⟩
+      exact ⟨p.1, hp⟩
+    · rintro ⟨a, ha⟩
+      exact ⟨(a, (cdZero : CD m)), ha⟩
+  have h3 := LinearMap.finrank_range_add_finrank_ker
+    ((WA x y).comp (LinearMap.fst ℝ (CD m) (CD m)))
+  have h4 := LinearMap.finrank_range_add_finrank_ker (WA x y)
+  rw [h2, Module.finrank_prod, finrank_cd] at h3
+  rw [finrank_cd] at h4
+  have h5 : LinearMap.range (WTP x y) = LinearMap.range (WT x y) := by
+    ext v
+    constructor
+    · rintro ⟨p, hp⟩
+      exact ⟨cdPairLm p, hp⟩
+    · rintro ⟨u, hu⟩
+      obtain ⟨p, hp⟩ := cdPairLm_surjective u
+      exact ⟨p, by
+        have hg : WT x y (cdPairLm p) = v := by rw [hp]; exact hu
+        exact hg⟩
+  have h6 := LinearMap.finrank_range_add_finrank_ker (WTP x y)
+  have h7 := LinearMap.finrank_range_add_finrank_ker (WT x y)
+  rw [h5, Module.finrank_prod, finrank_cd] at h6
+  rw [finrank_cd, pow_succ, Nat.mul_two] at h7
+  rw [h1] at h6
+  omega
+
+/-- **Base rung: the ℍ anti-associator is injective** (step 5: W(a) = 0
+forces a = 0, and W is linear). -/
+theorem WA_quaternion_injective : Function.Injective (WA unitI unitJ) := by
+  intro a b h
+  have h1 : WA unitI unitJ (a - b) = (cdZero : CD 2) := by
+    rw [LinearMap.map_sub, h, sub_self]
+  have h2 : (unitI * (a - b)) * unitJ + unitI * ((a - b) * unitJ) = (cdZero : CD 2) := h1
+  exact sub_eq_zero (W_inj_quaternion (a - b) h2)
+
+/-- **The 16-census value 4, machine-checked.** dim ker W(i, j)|𝕆 = 4:
+the fold law at the ℍ→𝕆 rung, 0 + 2^2. -/
+theorem finrank_ker_WT_octonion :
+    Module.finrank ℝ (LinearMap.ker (WT unitI unitJ)) = 4 := by
+  rw [finrank_ker_W_fold unitI unitJ conj_unitI unitI_sq hxy_units art_left_two]
+  have hE := LinearEquiv.finrank_eq
+    (LinearEquiv.ofInjective (WA unitI unitJ) WA_quaternion_injective)
+  have hR := LinearMap.finrank_range_add_finrank_ker (WA unitI unitJ)
+  rw [← hE] at hR
+  have hK : Module.finrank ℝ (LinearMap.ker (WA unitI unitJ)) = 0 := by omega
+  rw [hK]
+  decide
+
+/-- **Embedded quaternion units at level 3.** The pair (i, j) sitting
+inside the octonions satisfies the same anticommuting-imaginary
+hypotheses at level 3, with left art there. -/
+theorem conj_unitI' : conj ((dbl unitI (cdZero : CD 2)) : CD 3)
+    = neg (dbl unitI (cdZero : CD 2)) := by
+  show dbl (conj unitI) (neg (cdZero : CD 2)) = neg (dbl unitI (cdZero : CD 2))
+  rw [conj_unitI, neg_dbl]
+
+theorem unitI_sq' : ((dbl unitI (cdZero : CD 2)) : CD 3) * (dbl unitI (cdZero : CD 2))
+    = neg (cdOne : CD 3) := by
+  show dbl (unitI * unitI - (cdZero : CD 2) * conj (cdZero : CD 2))
+      (conj unitI * (cdZero : CD 2) + unitI * (cdZero : CD 2))
+    = neg (dbl (cdOne : CD 2) (cdZero : CD 2))
+  rw [zero_mul, sub_zero, mul_zero, mul_zero, add_zero, unitI_sq, neg_dbl, neg_zero]
+
+theorem hxy_units' : ((dbl unitJ (cdZero : CD 2)) : CD 3) * (dbl unitI (cdZero : CD 2))
+    = neg ((dbl unitI (cdZero : CD 2)) * (dbl unitJ (cdZero : CD 2))) := by
+  show dbl (unitJ * unitI - (cdZero : CD 2) * conj (cdZero : CD 2))
+      (conj unitJ * (cdZero : CD 2) + unitI * (cdZero : CD 2))
+    = neg (dbl (unitI * unitJ - (cdZero : CD 2) * conj (cdZero : CD 2))
+      (conj unitI * (cdZero : CD 2) + unitJ * (cdZero : CD 2)))
+  rw [zero_mul, sub_zero, mul_zero, mul_zero, add_zero,
+    sub_zero, mul_zero, mul_zero, add_zero,
+    hxy_units, neg_dbl, neg_zero]
+
+/-- **The 32-census value 12, machine-checked.** dim ker W(i', j')|S = 12:
+the fold law at the 𝕆→S rung, 4 + 2^3, where the level-3 kernel is the
+level-2 doubled kernel by `WA_eq_WT_embed`. -/
+theorem finrank_ker_WT_sedenion :
+    Module.finrank ℝ (LinearMap.ker (WT (dbl unitI (cdZero : CD 2))
+      (dbl unitJ (cdZero : CD 2)))) = 12 := by
+  rw [finrank_ker_W_fold (dbl unitI (cdZero : CD 2)) (dbl unitJ (cdZero : CD 2))
+      conj_unitI' unitI_sq' hxy_units' art_left_three,
+    WA_eq_WT_embed, finrank_ker_WT_octonion]
+  decide
+
+/-!
 ### Seal (2026-10-01)
 
 The fold-law chain through chain steps (1)-(5) plus the fold law in
@@ -1552,6 +1817,13 @@ hence C ≡ 0 identically at art levels, hence ker W_{m+1} = ker W_m ⊕
 (free ℓ-block), anchored at the (i, j)-rung as the 16-census value 4
 and by art at CD 3 as the 32-census value 12 for old pairs. Beyond
 art levels (m ≥ 4) C ≡ 0 is numeric-only (930/930, check F).
+The finrank layer closes the chain as EQUATIONS BETWEEN NUMBERS:
+CD m is a genuine R-module (componentwise scalar recursion, the scalar
+passes through the multiplication on either side), finrank (CD m) = 2^m,
+W_A and W_T are linear maps, and rank-nullity turns the kernel
+decomposition into dim ker W_{m+1} = dim ker W_m + 2^m -- anchored at
+dim ker W(i, j)|ℍ = 0, this machine-checks the census values 4 (16) and
+12 (32) as closed numerals, sorry-free.
 `#print axioms` below must show only the three standard axioms of Lean's
 dependent type theory (propext, Classical.choice, Quot.sound) -- no
 `sorryAx`, no hand-added `axiom` decls.
@@ -1593,5 +1865,15 @@ dependent type theory (propext, Classical.choice, Quot.sound) -- no
 #print axioms C_eq_zero
 #print axioms ker_W_fold
 #print axioms ker_W_octonion_fold
+#print axioms finrank_cd
+#print axioms WA_eq_WT_embed
+#print axioms ker_WTP_eq
+#print axioms finrank_ker_W_fold
+#print axioms WA_quaternion_injective
+#print axioms finrank_ker_WT_octonion
+#print axioms conj_unitI'
+#print axioms unitI_sq'
+#print axioms hxy_units'
+#print axioms finrank_ker_WT_sedenion
 
 end Foldlaw
