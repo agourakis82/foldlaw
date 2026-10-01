@@ -1225,15 +1225,82 @@ theorem C_comp_Lx_octonion (a : CD 2) :
   C_comp_Lx_eq_zero unitI unitJ a conj_unitI unitI_sq hxy_units art_left_two
 
 /-!
+### Step (5) of the T12 chain: H ∩ x·ker W = 0
+
+The claims sheet's three-line directness proof: if h = x·a ∈ H then
+a = x̄h by left art and injectivity; x̄·H = H; and W|_H is invertible,
+so W(a) = W(x̄h) = 0 forces h = 0. The general-level statement needs
+H = span{1, x, y, xy} as a coefficient space plus linear independence
+(the linear-algebra layer that steps (6)-(7) also need), so here we
+deliver the two algebraic engines and the full numeric anchor. At the
+ℍ rung H(i, j) = ℍ is ALL of ℍ, so the directness reduces to
+ker W(i, j) = 0 -- and that closes by associativity of ℍ plus two-sided
+cancellation.
+-/
+
+/-- Characteristic zero, componentwise: a + a = 0 forces a = 0. -/
+theorem add_self_eq_zero {m : ℕ} (a : CD m) (h : a + a = cdZero) : a = cdZero := by
+  induction m with
+  | zero =>
+    cases a with
+    | zero r =>
+      have h' : zero (r + r) = zero 0 := h
+      injection h' with h1
+      exact congrArg zero (by linarith)
+  | succ n ih =>
+    cases a with
+    | dbl x y =>
+      have h' : dbl (x + x) (y + y)
+          = (dbl (cdZero : CD n) (cdZero : CD n) : CD (n + 1)) := h
+      injection h' with hidx h1 h2
+      exact congrArg₂ dbl (ih x h1) (ih y h2)
+
+/-- **L_x is injective (by the left art).** At any left-alternative
+level, an imaginary unit x has x·a = 0 only for a = 0: apply x̄ = -x
+to the left and use x·(x·a) = (x·x)·a = -a. This is the injectivity
+half of step (6). -/
+theorem Lx_inj {m : ℕ} (x a : CD m) (hx : conj x = neg x)
+    (hx2 : x * x = neg (cdOne : CD m))
+    (hLart : ∀ u w : CD m, u * (u * w) = (u * u) * w)
+    (h : x * a = (cdZero : CD m)) : a = (cdZero : CD m) := by
+  have h2 : conj x * (x * a) = conj x * (cdZero : CD m) := by rw [h]
+  rw [hx, neg_mul, hLart x a, hx2, neg_mul, one_mul, neg_neg, mul_zero] at h2
+  exact h2
+
+/-- **Numeric anchor of step (5): W|_H is injective.** At the ℍ rung the
+quaternion H(x, y) is all of ℍ, so the directness H ∩ x·ker W = 0
+reduces to ker W(i, j) = 0. -/
+theorem W_inj_quaternion (a : CD 2)
+    (hW : (unitI * a) * unitJ + unitI * (a * unitJ) = (cdZero : CD 2)) :
+    a = (cdZero : CD 2) := by
+  rw [assoc_two] at hW
+  have h1 : unitI * (a * unitJ) = (cdZero : CD 2) := add_self_eq_zero _ hW
+  have h2 : a * unitJ = (cdZero : CD 2) :=
+    Lx_inj unitI (a * unitJ) conj_unitI unitI_sq art_left_two h1
+  have h3 : (a * unitJ) * conj unitJ = (cdZero : CD 2) * conj unitJ := by rw [h2]
+  rw [assoc_two, conj_unitJ, mul_neg, unitJ_sq, neg_neg, mul_one, zero_mul] at h3
+  exact h3
+
+/-- **Step (5) at the octonionic anchor: H ∩ x·ker W = 0.** If
+W(a) = 0 at the ℍ rung, the H-component x·a of the fold vanishes. -/
+theorem x_mul_kerW_inter_H_octonion (a : CD 2)
+    (hW : (unitI * a) * unitJ + unitI * (a * unitJ) = (cdZero : CD 2)) :
+    unitI * a = (cdZero : CD 2) := by
+  rw [W_inj_quaternion a hW, mul_zero]
+
+/-!
 ### Seal (2026-10-01)
 
-The fold-law chain through chain steps (1)-(4) is sorry-free:
+The fold-law chain through chain steps (1)-(5) is sorry-free:
 alternativity of ℍ→ℍ-doubles (R→ℂ→ℍ→𝕆), the kernel isomorphism
 ker L_z ≅ ker W with the numeric octonion anchor z = i + jℓ, the
 diagonal block lemma ker W_T = ker W_A ⊕ ker C with C = -{L_x, L_y},
 the quaternion containment H = span{1, x, y, xy} ⊂ ker C with the
-octonionic anchor for (i, j), and x·ker W ⊆ ker C in the pointwise
-form C∘L_x = 0 (a fortiori on ker W) with the octonionic anchor.
+octonionic anchor for (i, j), x·ker W ⊆ ker C in the pointwise
+form C∘L_x = 0 (a fortiori on ker W) with the octonionic anchor,
+and the directness engine of H ∩ x·ker W = 0: L_x injective by the
+left art plus the numeric anchor ker W(i, j) = 0 at the ℍ rung
+where H(i, j) is all of ℍ.
 `#print axioms` below must show only the three standard axioms of Lean's
 dependent type theory (propext, Classical.choice, Quot.sound) -- no
 `sorryAx`, no hand-added `axiom` decls.
@@ -1267,5 +1334,9 @@ dependent type theory (propext, Classical.choice, Quot.sound) -- no
 #print axioms C_comp_Lx_eq_zero
 #print axioms x_mul_ker_W_subset_ker_C
 #print axioms C_comp_Lx_octonion
+#print axioms add_self_eq_zero
+#print axioms Lx_inj
+#print axioms W_inj_quaternion
+#print axioms x_mul_kerW_inter_H_octonion
 
 end Foldlaw
