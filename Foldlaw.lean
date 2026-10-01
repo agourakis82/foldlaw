@@ -948,11 +948,89 @@ theorem ker_Lz_octonion (a b : CD 2) :
     conj_unitI conj_unitJ unitI_sq unitJ_sq a b
 
 /-!
+#### Chain step (2): diagonal blocks across the doubling
+
+For x, y : CD m and the embedded pair X = (x, 0), Y = (y, 0) : CD (m + 1),
+the anti-associator of (X, Y) acting on w = (a₀, a₁) splits into DIAGONAL
+blocks: the level-m anti-associator of (x, y) on a₀, and the complementary
+block C(u) = y(x̄u) + x̄(yu) = -{L_x, L_y}(u) on a₁ (claims sheet T12,
+three-line hand derivation: x·(a₁ℓ₀) = (x̄a₁)ℓ₀ and (a₁ℓ₀)·y = (ya₁)ℓ₀).
+Hence ker W at the doubled level is ker W ⊕ ker C, pointwise.
+-/
+
+/-- **Chain step (2), block lemma.** The anti-associator
+W_T(w) = (X*w)*Y + X*(w*Y) of the embedded pair X = (x,0), Y = (y,0)
+decomposes as W_T(a₀, a₁) = (W_A a₀, C a₁): the doubling is DIAGONAL.
+No hypotheses -- pure level-m algebra, valid at every floor of the tower,
+including the floors where alternativity is dead. -/
+theorem W_block {m : ℕ} (x y a₀ a₁ : CD m) :
+    (dbl x (cdZero : CD m) * dbl a₀ a₁) * dbl y (cdZero : CD m)
+      + dbl x (cdZero : CD m) * (dbl a₀ a₁ * dbl y (cdZero : CD m))
+    = dbl ((x * a₀) * y + x * (a₀ * y))
+        (y * (conj x * a₁) + conj x * (y * a₁)) := by
+  have hXw : dbl x (cdZero : CD m) * dbl a₀ a₁
+      = dbl (x * a₀) (conj x * a₁) := by
+    show dbl (x * a₀ - a₁ * conj (cdZero : CD m))
+        (conj x * a₁ + a₀ * (cdZero : CD m)) = dbl (x * a₀) (conj x * a₁)
+    rw [conj_zero, mul_zero, sub_zero, mul_zero, add_zero]
+  have hwY : dbl a₀ a₁ * dbl y (cdZero : CD m)
+      = dbl (a₀ * y) (y * a₁) := by
+    show dbl (a₀ * y - (cdZero : CD m) * conj a₁)
+        (conj a₀ * (cdZero : CD m) + y * a₁) = dbl (a₀ * y) (y * a₁)
+    rw [zero_mul, mul_zero, sub_zero, zero_add]
+  have h1 : (dbl x (cdZero : CD m) * dbl a₀ a₁) * dbl y (cdZero : CD m)
+      = dbl ((x * a₀) * y) (y * (conj x * a₁)) := by
+    rw [hXw]
+    show dbl ((x * a₀) * y - (cdZero : CD m) * conj (conj x * a₁))
+        (conj (x * a₀) * (cdZero : CD m) + y * (conj x * a₁))
+        = dbl ((x * a₀) * y) (y * (conj x * a₁))
+    rw [zero_mul, mul_zero, sub_zero, zero_add]
+  have h2 : dbl x (cdZero : CD m) * (dbl a₀ a₁ * dbl y (cdZero : CD m))
+      = dbl (x * (a₀ * y)) (conj x * (y * a₁)) := by
+    rw [hwY]
+    show dbl (x * (a₀ * y) - (y * a₁) * conj (cdZero : CD m))
+        (conj x * (y * a₁) + (a₀ * y) * (cdZero : CD m))
+        = dbl (x * (a₀ * y)) (conj x * (y * a₁))
+    rw [conj_zero, mul_zero, sub_zero, mul_zero, add_zero]
+  rw [h1, h2]
+  rfl
+
+/-- **Chain step (2), kernel split.** The kernel of the doubled
+anti-associator is the direct product of the two diagonal blocks:
+(a₀, a₁) is killed iff W kills a₀ AND C kills a₁. This is the claims
+sheet's ker W_T = ker W_A ⊕ ker C, pointwise. -/
+theorem ker_WT_iff {m : ℕ} (x y a₀ a₁ : CD m) :
+    (dbl x (cdZero : CD m) * dbl a₀ a₁) * dbl y (cdZero : CD m)
+      + dbl x (cdZero : CD m) * (dbl a₀ a₁ * dbl y (cdZero : CD m))
+      = (cdZero : CD (m + 1)) ↔
+    (x * a₀) * y + x * (a₀ * y) = (cdZero : CD m) ∧
+    y * (conj x * a₁) + conj x * (y * a₁) = (cdZero : CD m) := by
+  rw [W_block]
+  constructor
+  · intro h
+    have h' : dbl ((x * a₀) * y + x * (a₀ * y))
+          (y * (conj x * a₁) + conj x * (y * a₁))
+        = (dbl (cdZero : CD m) (cdZero : CD m) : CD (m + 1)) := h
+    injection h' with hidx h1 h2
+    exact ⟨h1, h2⟩
+  · rintro ⟨h1, h2⟩
+    exact congrArg₂ dbl h1 h2
+
+/-- For imaginary x (conj x = -x), the complementary block C is the NEGATIVE
+anti-commutator of the left multiplications: C(u) = -{L_x, L_y}(u), the
+claims sheet's C = -{L_x, L_y}. -/
+theorem C_eq_neg_anticommutator {m : ℕ} (x y u : CD m) (hx : conj x = neg x) :
+    y * (conj x * u) + conj x * (y * u)
+      = neg (y * (x * u) + x * (y * u)) := by
+  rw [hx, neg_mul, neg_mul, mul_neg, neg_add]
+
+/-!
 ### Seal (2026-10-01)
 
-The fold-law chain through chain step (1) is sorry-free: alternativity of
-ℍ→ℍ-doubles (R→ℂ→ℍ→𝕆) plus the kernel isomorphism ker L_z ≅ ker W with the
-numeric octonion anchor z = i + jℓ.
+The fold-law chain through chain steps (1) and (2) is sorry-free:
+alternativity of ℍ→ℍ-doubles (R→ℂ→ℍ→𝕆), the kernel isomorphism
+ker L_z ≅ ker W with the numeric octonion anchor z = i + jℓ, and the
+diagonal block lemma ker W_T = ker W_A ⊕ ker C with C = -{L_x, L_y}.
 `#print axioms` below must show only the three standard axioms of Lean's
 dependent type theory (propext, Classical.choice, Quot.sound) -- no
 `sorryAx`, no hand-added `axiom` decls.
@@ -967,5 +1045,8 @@ dependent type theory (propext, Classical.choice, Quot.sound) -- no
 #print axioms art_right_three
 #print axioms ker_Lz_iff_ker_W
 #print axioms ker_Lz_octonion
+#print axioms W_block
+#print axioms ker_WT_iff
+#print axioms C_eq_neg_anticommutator
 
 end Foldlaw
