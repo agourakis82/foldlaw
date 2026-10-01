@@ -1356,6 +1356,185 @@ theorem ker_W_octonion_fold (a₀ a₁ : CD 2) :
     rw [h, mul_zero, zero_mul, mul_zero, add_zero]
 
 /-!
+### The finrank layer, phase A: module structure
+
+To state "dim ker W" as a number we need CD m to be a genuine ℝ-module.
+Scalar action r•a is componentwise recursion; the tower addition and
+negation already satisfy the abelian-group laws (proved above), so the
+only new content is the scalar bookkeeping and its compatibility with
+the Cayley-Dickson multiplication: r•(a*b) = (r•a)*b = a*(r•b), which
+is what makes W_A and W_T linear.
+-/
+
+/-- Scalar multiplication: componentwise recursion down the tower. -/
+def cdSmul : ∀ {m : ℕ}, ℝ → CD m → CD m
+  | 0, r, zero s => zero (r * s)
+  | _ + 1, r, dbl x y => dbl (cdSmul r x) (cdSmul r y)
+
+theorem smul_zero {m : ℕ} (r : ℝ) : cdSmul r (cdZero : CD m) = cdZero := by
+  induction m with
+  | zero => exact congrArg zero (show r * (0:ℝ) = 0 by ring)
+  | succ n ih => exact congrArg₂ dbl ih ih
+
+theorem zero_smul' {m : ℕ} (a : CD m) : cdSmul 0 a = cdZero := by
+  induction m with
+  | zero =>
+    cases a with
+    | zero s => exact congrArg zero (show (0:ℝ) * s = 0 by ring)
+  | succ n ih =>
+    cases a with
+    | dbl x y => exact congrArg₂ dbl (ih x) (ih y)
+
+theorem one_smul' {m : ℕ} (a : CD m) : cdSmul 1 a = a := by
+  induction m with
+  | zero =>
+    cases a with
+    | zero s => exact congrArg zero (_root_.one_mul s)
+  | succ n ih =>
+    cases a with
+    | dbl x y => exact congrArg₂ dbl (ih x) (ih y)
+
+theorem smul_neg {m : ℕ} (r : ℝ) (a : CD m) : cdSmul r (neg a) = neg (cdSmul r a) := by
+  induction m with
+  | zero =>
+    cases a with
+    | zero s => exact congrArg zero (_root_.mul_neg r s)
+  | succ n ih =>
+    cases a with
+    | dbl x y => exact congrArg₂ dbl (ih x) (ih y)
+
+theorem smul_add' {m : ℕ} (r : ℝ) (a b : CD m) :
+    cdSmul r (a + b) = cdSmul r a + cdSmul r b := by
+  induction m with
+  | zero =>
+    cases a with
+    | zero s =>
+      cases b with
+      | zero t => exact congrArg zero (_root_.mul_add r s t)
+  | succ n ih =>
+    cases a with
+    | dbl x y =>
+      cases b with
+      | dbl u v => exact congrArg₂ dbl (ih x u) (ih y v)
+
+theorem add_smul' {m : ℕ} (r s : ℝ) (a : CD m) :
+    cdSmul (r + s) a = cdSmul r a + cdSmul s a := by
+  induction m with
+  | zero =>
+    cases a with
+    | zero t => exact congrArg zero (_root_.add_mul r s t)
+  | succ n ih =>
+    cases a with
+    | dbl x y => exact congrArg₂ dbl (ih x) (ih y)
+
+theorem mul_smul' {m : ℕ} (r s : ℝ) (a : CD m) :
+    cdSmul (r * s) a = cdSmul r (cdSmul s a) := by
+  induction m with
+  | zero =>
+    cases a with
+    | zero t => exact congrArg zero (_root_.mul_assoc r s t)
+  | succ n ih =>
+    cases a with
+    | dbl x y => exact congrArg₂ dbl (ih x) (ih y)
+
+theorem smul_sub {m : ℕ} (r : ℝ) (a b : CD m) :
+    cdSmul r (a - b) = cdSmul r a - cdSmul r b := by
+  rw [sub_add, smul_add', smul_neg, ← sub_add]
+
+theorem smul_conj {m : ℕ} (r : ℝ) (a : CD m) :
+    conj (cdSmul r a) = cdSmul r (conj a) := by
+  induction m with
+  | zero =>
+    cases a with
+    | zero s => rfl
+  | succ n ih =>
+    cases a with
+    | dbl x y => exact congrArg₂ dbl (ih x) (smul_neg r y).symm
+
+/-- The scalar passes through the Cayley-Dickson multiplication on
+either side: (r•a)*b = r•(a*b) = a*(r•b). This is the linearity
+engine for W_A and W_T. -/
+theorem smul_mul_smul {m : ℕ} (r : ℝ) (a b : CD m) :
+    cdSmul r a * b = cdSmul r (a * b) ∧ a * cdSmul r b = cdSmul r (a * b) := by
+  induction m with
+  | zero =>
+    cases a with
+    | zero s =>
+      cases b with
+      | zero t =>
+        constructor
+        · exact congrArg zero (mul_assoc r s t)
+        · exact congrArg zero (mul_left_comm s r t)
+  | succ n ih =>
+    have h1 : ∀ a b : CD n, cdSmul r a * b = cdSmul r (a * b) := fun a b => (ih a b).1
+    have h2 : ∀ a b : CD n, a * cdSmul r b = cdSmul r (a * b) := fun a b => (ih a b).2
+    cases a with
+    | dbl p q =>
+      cases b with
+      | dbl u v =>
+        have c1 : cdSmul r p * u - v * conj (cdSmul r q)
+            = cdSmul r (p * u - v * conj q) := by
+          rw [h1 p u, smul_conj, h2 v (conj q), smul_sub]
+        have c2 : conj (cdSmul r p) * v + u * cdSmul r q
+            = cdSmul r (conj p * v + u * q) := by
+          rw [smul_conj, h1 (conj p) v, h2 u q, smul_add']
+        have c3 : p * cdSmul r u - cdSmul r v * conj q
+            = cdSmul r (p * u - v * conj q) := by
+          rw [h2 p u, h1 v (conj q), smul_sub]
+        have c4 : conj p * cdSmul r v + cdSmul r u * q
+            = cdSmul r (conj p * v + u * q) := by
+          rw [h2 (conj p) v, h1 u q, smul_add']
+        constructor
+        · exact congrArg₂ dbl c1 c2
+        · exact congrArg₂ dbl c3 c4
+
+theorem smul_mul_left {m : ℕ} (r : ℝ) (a b : CD m) :
+    cdSmul r a * b = cdSmul r (a * b) := (smul_mul_smul r a b).1
+
+theorem smul_mul_right {m : ℕ} (r : ℝ) (a b : CD m) :
+    a * cdSmul r b = cdSmul r (a * b) := (smul_mul_smul r a b).2
+
+/-!
+### The finrank layer, phase B: abelian group + module instances
+
+The tower was an abelian group all along; the instances below just
+register the structure Mathlib needs. All fields are the ad-hoc lemmas
+proved earlier in the file, so no new mathematics -- only bookkeeping.
+The `Add`/`Neg`/`Sub` instances at the top of the file remain in
+scope and are definitionally equal to the projections below.
+-/
+
+instance cdZeroInst {m : ℕ} : Zero (CD m) := ⟨cdZero⟩
+
+instance cdAddCommGroup {m : ℕ} : AddCommGroup (CD m) where
+  add := add
+  add_assoc := add_assoc
+  zero := cdZero
+  zero_add := zero_add
+  add_zero := add_zero
+  neg := neg
+  sub := sub
+  sub_eq_add_neg := sub_add
+  neg_add_cancel := neg_add_self
+  add_comm := add_comm
+  nsmul := nsmulRec
+  nsmul_zero := fun _ => rfl
+  nsmul_succ := fun _ _ => rfl
+  zsmul := zsmulRec
+  zsmul_zero' := fun _ => rfl
+  zsmul_succ' := fun _ _ => rfl
+  zsmul_neg' := fun _ _ => rfl
+
+instance cdModule {m : ℕ} : Module ℝ (CD m) where
+  smul := cdSmul
+  one_smul := one_smul'
+  mul_smul := mul_smul'
+  smul_zero := smul_zero
+  smul_add := smul_add'
+  zero_smul := zero_smul'
+  add_smul := add_smul'
+
+/-!
 ### Seal (2026-10-01)
 
 The fold-law chain through chain steps (1)-(5) plus the fold law in
