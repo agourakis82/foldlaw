@@ -812,9 +812,147 @@ theorem art_right_three (w x : CD 3) : (w * x) * x = w * (x * x) :=
   art_right_of_assoc assoc_two trace_central_two norm_central_two w x
 
 /-!
+### Chain step (1) of the fold law: ker L_z ≅ ker W
+
+With the code convention z*w = (x*a - b*ȳ, x̄*b + a*y) for z = (x, y),
+w = (a, b), the system ker L_z reduces exactly to
+(I) b = (x*a)*y and (II) W(a) = (x*a)*y + x*(a*y) = 0, where W is the
+ANTI-ASSOCIATOR (claims sheet T12, hand derivation). The derivation uses the
+art ONLY through two specific instances -- the left art in x and the right
+art in y -- which is what lets the tower consume this theorem level after
+level, long after global alternativity is dead.
+-/
+
+/-- From a - b = 0, recover a = b. -/
+theorem sub_eq_zero {m : ℕ} {a b : CD m} (h : a - b = cdZero) : a = b := by
+  have h1 : (a - b) + b = cdZero + b := congrArg (fun t => t + b) h
+  rw [sub_add, add_assoc, neg_add_self, add_zero, zero_add] at h1
+  exact h1
+
+/-- From A + B = 0, recover B = -A. -/
+theorem add_eq_zero_iff_neg {m : ℕ} {A B : CD m} (h : A + B = cdZero) :
+    B = neg A := by
+  have h1 : neg A + (A + B) = neg A + cdZero := congrArg (fun t => neg A + t) h
+  rw [← add_assoc, neg_add_self, zero_add, add_zero] at h1
+  exact h1
+
+/-- **Chain step (1).** For imaginary units x, y at level m satisfying the
+left art in x and the right art in y, the kernel of left multiplication by
+z = (x, y) at level m+1 is an exact copy of the kernel of the
+anti-associator W(a) = (x*a)*y + x*(a*y): the pair (a, b) is killed by L_z
+iff b is the determined image (x*a)*y and W kills a. -/
+theorem ker_Lz_iff_ker_W {m : ℕ} (x y : CD m)
+    (hartLx : ∀ w : CD m, x * (x * w) = (x * x) * w)
+    (hartRy : ∀ w : CD m, (w * y) * y = w * (y * y))
+    (hx : conj x = neg x) (hy : conj y = neg y)
+    (hx2 : x * x = neg (cdOne : CD m)) (hy2 : y * y = neg (cdOne : CD m))
+    (a b : CD m) :
+    dbl x y * dbl a b = (cdZero : CD (m + 1)) ↔
+    b = (x * a) * y ∧ (x * a) * y + x * (a * y) = (cdZero : CD m) := by
+  constructor
+  · intro h
+    have h' : dbl (x * a - b * conj y) (conj x * b + a * y)
+        = (dbl (cdZero : CD m) (cdZero : CD m) : CD (m + 1)) := h
+    injection h' with hidx h1 h2
+    -- (I): right-multiply the first component by y (conj y = -y, right art).
+    have e1 : (x * a) * y = (b * conj y) * y := by rw [sub_eq_zero h1]
+    rw [hy, mul_neg, neg_mul, hartRy b, hy2, mul_neg, mul_one, neg_neg] at e1
+    have hI : b = (x * a) * y := e1.symm
+    -- (II): left-multiply the second component by x (conj x = -x, left art).
+    have h2' : a * y + conj x * b = cdZero := by rw [add_comm, h2]
+    have e2 : x * (conj x * b) = x * (neg (a * y)) :=
+      by rw [add_eq_zero_iff_neg h2']
+    rw [hx, neg_mul, mul_neg, hartLx b, hx2, neg_mul, one_mul, neg_neg, mul_neg] at e2
+    have hII : (x * a) * y + x * (a * y) = cdZero := by
+      rw [← hI, e2, neg_add_self]
+    exact ⟨hI, hII⟩
+  · rintro ⟨hI, hII⟩
+    -- The image formula turns x*b into the left art in x: x*b = a*y.
+    have hB : (x * a) * y = neg (x * (a * y)) :=
+      add_eq_zero_iff_neg (by rw [add_comm, hII])
+    have hxb : x * b = a * y := by
+      rw [hI, hB, mul_neg, hartLx (a * y), hx2, neg_mul, one_mul, neg_neg]
+    have c1 : x * a - b * conj y = cdZero := by
+      rw [hy, hI, mul_neg, hartRy (x * a), hy2, mul_neg, mul_one, neg_neg,
+        sub_self]
+    have c2 : conj x * b + a * y = cdZero := by
+      rw [hx, neg_mul, hxb, neg_add_self]
+    exact congrArg₂ dbl c1 c2
+
+/-!
+#### Numeric anchor at the octonion level
+
+The canonical imaginary units of ℂ and ℍ, with all unit facts by
+definitional computation, and the iff instantiated at z = i + jℓ ∈ CD 3.
+-/
+
+/-- The imaginary unit of ℂ. -/
+def imagI : CD 1 := dbl cdZero cdOne
+
+/-- The quaternion unit i, embedded in ℍ. -/
+def unitI : CD 2 := dbl imagI cdZero
+
+/-- The new quaternion unit j. -/
+def unitJ : CD 2 := dbl cdZero cdOne
+
+theorem conj_imagI : conj imagI = neg imagI := by
+  show dbl (conj (cdZero : CD 0)) (neg (cdOne : CD 0))
+      = dbl (neg (cdZero : CD 0)) (neg (cdOne : CD 0))
+  rw [conj_zero, neg_zero]
+
+theorem imagI_sq : imagI * imagI = neg (cdOne : CD 1) := by
+  show dbl ((cdZero : CD 0) * (cdZero : CD 0) - (cdOne : CD 0) * conj (cdOne : CD 0))
+      (conj (cdZero : CD 0) * (cdOne : CD 0) + (cdZero : CD 0) * (cdOne : CD 0))
+      = dbl (neg (cdOne : CD 0)) (neg (cdZero : CD 0))
+  rw [conj_one, mul_one, zero_mul, conj_zero, zero_mul, sub_add, zero_add,
+    add_zero, neg_zero]
+
+theorem conj_unitI : conj unitI = neg unitI := by
+  show dbl (conj imagI) (neg (cdZero : CD 1))
+      = dbl (neg imagI) (neg (cdZero : CD 1))
+  rw [conj_imagI]
+
+theorem conj_unitJ : conj unitJ = neg unitJ := by
+  show dbl (conj (cdZero : CD 1)) (neg (cdOne : CD 1))
+      = dbl (neg (cdZero : CD 1)) (neg (cdOne : CD 1))
+  rw [conj_zero, neg_zero]
+
+theorem unitI_sq : unitI * unitI = neg (cdOne : CD 2) := by
+  show dbl (imagI * imagI - (cdZero : CD 1) * conj (cdZero : CD 1))
+      (conj imagI * (cdZero : CD 1) + imagI * (cdZero : CD 1))
+      = dbl (neg (cdOne : CD 1)) (neg (cdZero : CD 1))
+  rw [imagI_sq, zero_mul, sub_zero, mul_zero, mul_zero, add_zero, neg_zero]
+
+theorem unitJ_sq : unitJ * unitJ = neg (cdOne : CD 2) := by
+  show dbl ((cdZero : CD 1) * (cdZero : CD 1) - (cdOne : CD 1) * conj (cdOne : CD 1))
+      (conj (cdZero : CD 1) * (cdOne : CD 1) + (cdZero : CD 1) * (cdOne : CD 1))
+      = dbl (neg (cdOne : CD 1)) (neg (cdZero : CD 1))
+  rw [conj_one, mul_one, zero_mul, conj_zero, zero_mul, sub_add, zero_add,
+    add_zero, neg_zero]
+
+/-- The full alternating art holds at the quaternion level (ℍ is quadratic:
+ℂ below it is associative with central trace and norm). -/
+theorem art_left_two (x w : CD 2) : x * (x * w) = (x * x) * w :=
+  art_left_of_assoc assoc_one trace_central_one norm_central_one x w
+
+theorem art_right_two (w x : CD 2) : (w * x) * x = w * (x * x) :=
+  art_right_of_assoc assoc_one trace_central_one norm_central_one w x
+
+/-- Numeric anchor: for z = i + jℓ ∈ CD 3 (octonions), the kernel of L_z is
+an exact copy of the kernel of W(a) = (i*a)*j + i*(a*j). -/
+theorem ker_Lz_octonion (a b : CD 2) :
+    dbl unitI unitJ * dbl a b = (cdZero : CD 3) ↔
+    b = (unitI * a) * unitJ ∧ (unitI * a) * unitJ + unitI * (a * unitJ)
+      = (cdZero : CD 2) :=
+  ker_Lz_iff_ker_W unitI unitJ (art_left_two unitI) (fun w => art_right_two w unitJ)
+    conj_unitI conj_unitJ unitI_sq unitJ_sq a b
+
+/-!
 ### Seal (2026-10-01)
 
-The fold-law chain up to alternativity of ℍ→ℍ-doubles is sorry-free.
+The fold-law chain through chain step (1) is sorry-free: alternativity of
+ℍ→ℍ-doubles (R→ℂ→ℍ→𝕆) plus the kernel isomorphism ker L_z ≅ ker W with the
+numeric octonion anchor z = i + jℓ.
 `#print axioms` below must show only the three standard axioms of Lean's
 dependent type theory (propext, Classical.choice, Quot.sound) -- no
 `sorryAx`, no hand-added `axiom` decls.
@@ -827,5 +965,7 @@ dependent type theory (propext, Classical.choice, Quot.sound) -- no
 #print axioms art_right_of_assoc
 #print axioms art_left_three
 #print axioms art_right_three
+#print axioms ker_Lz_iff_ker_W
+#print axioms ker_Lz_octonion
 
 end Foldlaw
