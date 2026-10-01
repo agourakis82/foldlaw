@@ -1024,13 +1024,139 @@ theorem C_eq_neg_anticommutator {m : ℕ} (x y u : CD m) (hx : conj x = neg x) :
       = neg (y * (x * u) + x * (y * u)) := by
   rw [hx, neg_mul, neg_mul, mul_neg, neg_add]
 
+/-- Negation is componentwise on doubles (definitional). -/
+theorem neg_dbl {m : ℕ} (a b : CD m) : neg (dbl a b) = dbl (neg a) (neg b) := rfl
+
+/-!
+#### Chain step (3): H(x, y) ⊂ ker C
+
+The quaternion H = span{1, x, y, xy} sits inside the kernel of the
+complementary block C(u) = y(x̄u) + x̄(yu) for every Fano pair of imaginary
+units: C kills 1, x, y and xy. The derivation consumes only the two art
+instances of step (1) plus the two anti-commutation facts of the pair
+(hxy : yx = -(xy), hyxy : y(xy) = -((xy)y)) -- the polarisation of the
+alternating associator (claims sheet T6/T12). All hypotheses are closed
+by definitional computation at the octonionic anchor below.
+-/
+
+section Step3
+
+/-- **C(1) = 0**: the anti-commutator polarisation kills the identity. -/
+theorem C_ker_one {m : ℕ} (x y : CD m) (hx : conj x = neg x)
+    (hxy : y * x = neg (x * y)) :
+    y * (conj x * (cdOne : CD m)) + conj x * (y * (cdOne : CD m))
+      = (cdZero : CD m) := by
+  rw [hx, neg_mul, mul_neg, mul_one, mul_one, neg_mul, hxy, neg_neg,
+    add_neg_self]
+
+/-- **C(x) = 0**: x̄x = 1 and the left art x(xy) = (x²)y = -y. -/
+theorem C_ker_x {m : ℕ} (x y : CD m) (hx : conj x = neg x)
+    (hx2 : x * x = neg (cdOne : CD m)) (hxy : y * x = neg (x * y))
+    (hartLx : ∀ w : CD m, x * (x * w) = (x * x) * w) :
+    y * (conj x * x) + conj x * (y * x) = (cdZero : CD m) := by
+  have e1 : conj x * x = (cdOne : CD m) := by
+    rw [hx, neg_mul, hx2, neg_neg]
+  have e2 : x * (x * y) = neg y := by
+    rw [hartLx y, hx2, neg_mul, one_mul]
+  rw [e1, mul_one, hxy, mul_neg, hx, neg_mul, neg_neg, e2, add_neg_self]
+
+/-- **C(y) = 0**: y(xy) = -((xy)y) = -x(y²) = x by the right art. -/
+theorem C_ker_y {m : ℕ} (x y : CD m) (hx : conj x = neg x)
+    (hy2 : y * y = neg (cdOne : CD m))
+    (hyxy : y * (x * y) = neg ((x * y) * y))
+    (hartRy : ∀ w : CD m, (w * y) * y = w * (y * y)) :
+    y * (conj x * y) + conj x * (y * y) = (cdZero : CD m) := by
+  have e1 : x * (y * y) = neg x := by rw [hy2, mul_neg, mul_one]
+  have e2 : y * (x * y) = x := by rw [hyxy, hartRy x, e1, neg_neg]
+  rw [hy2, mul_neg, mul_one, hx, neg_mul, mul_neg, e2, neg_neg, neg_add_self]
+
+/-- **C(xy) = 0**: the whole quaternion H = span{1, x, y, xy} dies in C. -/
+theorem C_ker_xy {m : ℕ} (x y : CD m) (hx : conj x = neg x)
+    (hx2 : x * x = neg (cdOne : CD m)) (hy2 : y * y = neg (cdOne : CD m))
+    (hyxy : y * (x * y) = neg ((x * y) * y))
+    (hartLx : ∀ w : CD m, x * (x * w) = (x * x) * w)
+    (hartRy : ∀ w : CD m, (w * y) * y = w * (y * y)) :
+    y * (conj x * (x * y)) + conj x * (y * (x * y)) = (cdZero : CD m) := by
+  have eL : x * (x * y) = neg y := by rw [hartLx y, hx2, neg_mul, one_mul]
+  have eR : y * (x * y) = x := by
+    rw [hyxy, hartRy x, hy2, mul_neg, mul_one, neg_neg]
+  rw [hx, neg_mul, mul_neg, eL, mul_neg, hy2, neg_neg, eR, neg_mul, hx2,
+    neg_neg, neg_add_self]
+
+end Step3
+
+/-!
+#### Octonionic anchor of step (3)
+
+The two anti-commutation hypotheses hold by definitional computation for
+the concrete quaternion units i = (imagI, 0), j = (0, 1): ij = (0, -i),
+ji = (0, i), j(ij) = i = -((ij)j). Hence the whole quaternion
+H = span{1, i, j, ij} ⊂ ker C at the ℍ level that doubles into 𝕆.
+-/
+
+theorem unitI_mul_unitJ : unitI * unitJ = dbl (cdZero : CD 1) (neg imagI) := by
+  show dbl (imagI * (cdZero : CD 1) - (cdOne : CD 1) * conj (cdZero : CD 1))
+      (conj imagI * (cdOne : CD 1) + (cdZero : CD 1) * (cdZero : CD 1))
+      = dbl (cdZero : CD 1) (neg imagI)
+  rw [mul_zero, conj_zero, mul_zero, sub_zero, conj_imagI, neg_mul, mul_one,
+    zero_mul, add_zero]
+
+theorem unitJ_mul_unitI : unitJ * unitI = dbl (cdZero : CD 1) imagI := by
+  show dbl ((cdZero : CD 1) * imagI - (cdZero : CD 1) * conj (cdOne : CD 1))
+      (conj (cdZero : CD 1) * (cdZero : CD 1) + imagI * (cdOne : CD 1))
+      = dbl (cdZero : CD 1) imagI
+  rw [zero_mul, conj_one, zero_mul, sub_self, conj_zero, zero_mul, mul_one,
+    zero_add]
+
+theorem hxy_units : unitJ * unitI = neg (unitI * unitJ) := by
+  rw [unitJ_mul_unitI, unitI_mul_unitJ, neg_dbl, neg_neg, neg_zero]
+
+theorem hyxy_units :
+    unitJ * (unitI * unitJ) = neg ((unitI * unitJ) * unitJ) := by
+  have h1 : unitJ * (unitI * unitJ) = dbl imagI (cdZero : CD 1) := by
+    rw [unitI_mul_unitJ]
+    show dbl ((cdZero : CD 1) * (cdZero : CD 1) - neg imagI * conj (cdOne : CD 1))
+        (conj (cdZero : CD 1) * neg imagI + (cdZero : CD 1) * (cdOne : CD 1))
+        = dbl imagI (cdZero : CD 1)
+    rw [zero_mul, conj_one, neg_mul, mul_one, sub_add, neg_neg, zero_add,
+      conj_zero, zero_mul, zero_mul, zero_add]
+  have h2 : (unitI * unitJ) * unitJ = dbl (neg imagI) (cdZero : CD 1) := by
+    rw [unitI_mul_unitJ]
+    show dbl ((cdZero : CD 1) * (cdZero : CD 1) - (cdOne : CD 1) * conj (neg imagI))
+        (conj (cdZero : CD 1) * (cdOne : CD 1) + (cdZero : CD 1) * neg imagI)
+        = dbl (neg imagI) (cdZero : CD 1)
+    rw [conj_neg, conj_imagI, neg_neg, one_mul, zero_mul, sub_add, zero_add,
+      conj_zero, zero_mul, mul_neg, zero_mul, neg_zero, zero_add]
+  rw [h1, h2, neg_dbl, neg_neg, neg_zero]
+
+/-- **Numeric anchor of step (3).** For the concrete quaternion pair
+(i, j) whose double is the octonion z = i + jℓ, the complementary block
+C(u) = j(īu) + ī(ju) kills the entire quaternion H = span{1, i, j, ij}. -/
+theorem C_ker_H_octonion :
+    unitJ * (conj unitI * (cdOne : CD 2)) + conj unitI * (unitJ * (cdOne : CD 2))
+      = (cdZero : CD 2)
+    ∧ unitJ * (conj unitI * unitI) + conj unitI * (unitJ * unitI)
+      = (cdZero : CD 2)
+    ∧ unitJ * (conj unitI * unitJ) + conj unitI * (unitJ * unitJ)
+      = (cdZero : CD 2)
+    ∧ unitJ * (conj unitI * (unitI * unitJ))
+        + conj unitI * (unitJ * (unitI * unitJ)) = (cdZero : CD 2) :=
+  ⟨C_ker_one unitI unitJ conj_unitI hxy_units,
+   C_ker_x unitI unitJ conj_unitI unitI_sq hxy_units (art_left_two unitI),
+   C_ker_y unitI unitJ conj_unitI unitJ_sq hyxy_units
+     (fun w => art_right_two w unitJ),
+   C_ker_xy unitI unitJ conj_unitI unitI_sq unitJ_sq hyxy_units
+     (art_left_two unitI) (fun w => art_right_two w unitJ)⟩
+
 /-!
 ### Seal (2026-10-01)
 
-The fold-law chain through chain steps (1) and (2) is sorry-free:
+The fold-law chain through chain steps (1)-(3) is sorry-free:
 alternativity of ℍ→ℍ-doubles (R→ℂ→ℍ→𝕆), the kernel isomorphism
-ker L_z ≅ ker W with the numeric octonion anchor z = i + jℓ, and the
-diagonal block lemma ker W_T = ker W_A ⊕ ker C with C = -{L_x, L_y}.
+ker L_z ≅ ker W with the numeric octonion anchor z = i + jℓ, the
+diagonal block lemma ker W_T = ker W_A ⊕ ker C with C = -{L_x, L_y},
+and the quaternion containment H = span{1, x, y, xy} ⊂ ker C with the
+octonionic anchor for (i, j).
 `#print axioms` below must show only the three standard axioms of Lean's
 dependent type theory (propext, Classical.choice, Quot.sound) -- no
 `sorryAx`, no hand-added `axiom` decls.
@@ -1048,5 +1174,15 @@ dependent type theory (propext, Classical.choice, Quot.sound) -- no
 #print axioms W_block
 #print axioms ker_WT_iff
 #print axioms C_eq_neg_anticommutator
+#print axioms neg_dbl
+#print axioms C_ker_one
+#print axioms C_ker_x
+#print axioms C_ker_y
+#print axioms C_ker_xy
+#print axioms unitI_mul_unitJ
+#print axioms unitJ_mul_unitI
+#print axioms hxy_units
+#print axioms hyxy_units
+#print axioms C_ker_H_octonion
 
 end Foldlaw
