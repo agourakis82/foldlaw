@@ -1149,14 +1149,91 @@ theorem C_ker_H_octonion :
      (art_left_two unitI) (fun w => art_right_two w unitJ)⟩
 
 /-!
+### Step (4) of the T12 chain: x·ker W ⊆ ker C
+
+Polarising the left art u·(u·w) = (u·u)·w in u and instantiating at
+the anticommuting pair (x, y) gives x·(y·(x·a)) = y·a for EVERY a, so
+C(x·a) = y·a − x·(y·(x·a)) = 0 identically: C∘L_x = 0. Step (4)
+(x·ker W ⊆ ker C) follows a fortiori — the hypothesis W(a) = 0 is
+never used. This matches the census: at the ℍ rung L_x is invertible,
+so C vanishes on all of ℍ and dim ker C = 4 + dim ker W there.
+-/
+
+/-- Cancellation on the left. -/
+theorem add_left_cancel {m : ℕ} (p q r : CD m) (h : p + q = p + r) : q = r := by
+  have h2 : neg p + (p + q) = neg p + (p + r) := by rw [h]
+  rw [← add_assoc, neg_add_self, zero_add, ← add_assoc, neg_add_self, zero_add] at h2
+  exact h2
+
+/-- Cancellation on the right. -/
+theorem add_right_cancel {m : ℕ} (p q r : CD m) (h : q + p = r + p) : q = r := by
+  have h2 : (q + p) + neg p = (r + p) + neg p := by rw [h]
+  rw [add_assoc, add_assoc, add_neg_self, add_zero, add_zero] at h2
+  exact h2
+
+/-- Polarised left art: linearise u·(u·w) = (u·u)·w in u. -/
+theorem art_left_lin {m : ℕ} (hLart : ∀ u w : CD m, u * (u * w) = (u * u) * w)
+    (u v w : CD m) :
+    u * (v * w) + v * (u * w) = (u * v) * w + (v * u) * w := by
+  have hL : (u + v) * ((u + v) * w)
+      = (u * (u * w) + u * (v * w)) + (v * (u * w) + v * (v * w)) := by
+    rw [add_mul', add_mul', mul_add', mul_add']
+  have hR : ((u + v) * (u + v)) * w
+      = ((u * u) * w + (u * v) * w) + ((v * u) * w + (v * v) * w) := by
+    rw [add_mul', mul_add', mul_add', add_mul', add_mul', add_mul']
+  have key := hL.symm.trans ((hLart (u + v) w).trans hR)
+  rw [hLart u w, hLart v w, add_assoc, add_assoc] at key
+  have h1 := add_left_cancel _ _ _ key
+  rw [← add_assoc, ← add_assoc] at h1
+  exact add_right_cancel _ _ _ h1
+
+/-- **Step (4), pointwise form: C∘L_x = 0.** For anticommuting imaginary
+x, y at a left-alternative level, C(x·a) = 0 for EVERY a. -/
+theorem C_comp_Lx_eq_zero {m : ℕ} (x y a : CD m) (hx : conj x = neg x)
+    (hx2 : x * x = neg (cdOne : CD m)) (hxy : y * x = neg (x * y))
+    (hLart : ∀ u w : CD m, u * (u * w) = (u * u) * w) :
+    y * (conj x * (x * a)) + conj x * (y * (x * a)) = (cdZero : CD m) := by
+  have hxa : x * (x * a) = neg a := by
+    rw [hLart x a, hx2, neg_mul, one_mul]
+  have key : x * (y * (x * a)) + y * (x * (x * a)) = (cdZero : CD m) := by
+    have e := art_left_lin hLart x y (x * a)
+    rw [hxy, neg_mul, add_neg_self] at e
+    exact e
+  have hkey : x * (y * (x * a)) = y * a := by
+    rw [hxa, mul_neg] at key
+    have h2 : x * (y * (x * a)) - y * a = (cdZero : CD m) := by
+      rw [sub_add]
+      exact key
+    exact sub_eq_zero h2
+  rw [hx, neg_mul, neg_mul, mul_neg, hxa, mul_neg, neg_neg, hkey, add_neg_self]
+
+/-- **Step (4) as stated in the chain:** x·ker W ⊆ ker C, pointwise.
+`W(a) = 0` is recorded for the chain link but not needed — the theorem
+above is strictly stronger. -/
+theorem x_mul_ker_W_subset_ker_C {m : ℕ} (x y a : CD m) (hx : conj x = neg x)
+    (hx2 : x * x = neg (cdOne : CD m)) (hxy : y * x = neg (x * y))
+    (hLart : ∀ u w : CD m, u * (u * w) = (u * u) * w)
+    (_hW : (x * a) * y + x * (a * y) = (cdZero : CD m)) :
+    y * (conj x * (x * a)) + conj x * (y * (x * a)) = (cdZero : CD m) :=
+  C_comp_Lx_eq_zero x y a hx hx2 hxy hLart
+
+/-- **Numeric anchor of step (4).** For the quaternion pair (i, j) whose
+double is z = i + jℓ ∈ 𝕆: C(i·a) = 0 for every quaternion a. -/
+theorem C_comp_Lx_octonion (a : CD 2) :
+    unitJ * (conj unitI * (unitI * a)) + conj unitI * (unitJ * (unitI * a))
+      = (cdZero : CD 2) :=
+  C_comp_Lx_eq_zero unitI unitJ a conj_unitI unitI_sq hxy_units art_left_two
+
+/-!
 ### Seal (2026-10-01)
 
-The fold-law chain through chain steps (1)-(3) is sorry-free:
+The fold-law chain through chain steps (1)-(4) is sorry-free:
 alternativity of ℍ→ℍ-doubles (R→ℂ→ℍ→𝕆), the kernel isomorphism
 ker L_z ≅ ker W with the numeric octonion anchor z = i + jℓ, the
 diagonal block lemma ker W_T = ker W_A ⊕ ker C with C = -{L_x, L_y},
-and the quaternion containment H = span{1, x, y, xy} ⊂ ker C with the
-octonionic anchor for (i, j).
+the quaternion containment H = span{1, x, y, xy} ⊂ ker C with the
+octonionic anchor for (i, j), and x·ker W ⊆ ker C in the pointwise
+form C∘L_x = 0 (a fortiori on ker W) with the octonionic anchor.
 `#print axioms` below must show only the three standard axioms of Lean's
 dependent type theory (propext, Classical.choice, Quot.sound) -- no
 `sorryAx`, no hand-added `axiom` decls.
@@ -1184,5 +1261,11 @@ dependent type theory (propext, Classical.choice, Quot.sound) -- no
 #print axioms hxy_units
 #print axioms hyxy_units
 #print axioms C_ker_H_octonion
+#print axioms add_left_cancel
+#print axioms add_right_cancel
+#print axioms art_left_lin
+#print axioms C_comp_Lx_eq_zero
+#print axioms x_mul_ker_W_subset_ker_C
+#print axioms C_comp_Lx_octonion
 
 end Foldlaw
