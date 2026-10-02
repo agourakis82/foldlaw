@@ -2860,6 +2860,30 @@ theorem beval_linearIndependent {m : ℕ} :
     LinearIndependent ℝ (beval : BUnit m → CD m) :=
   Fintype.linearIndependent_iff.mpr (fun g hg => beval_linearIndependent_aux m g hg)
 
+/-- The unit one is never zero. -/
+theorem cdOne_ne_zero {m : ℕ} : (cdOne : CD m) ≠ cdZero := by
+  induction m with
+  | zero =>
+    intro h
+    have h' : zero (1:ℝ) = zero 0 := h
+    injection h' with h1
+    exact one_ne_zero h1
+  | succ n ih =>
+    intro h
+    have h' : dbl (cdOne : CD n) (cdZero : CD n)
+        = dbl (cdZero : CD n) (cdZero : CD n) := h
+    injection h' with hidx h1 h2
+    exact ih h1
+
+instance cdNontrivial {m : ℕ} : Nontrivial (CD m) :=
+  ⟨cdZero, cdOne, fun h => cdOne_ne_zero h.symm⟩
+
+/-- The unit family is a basis of the tower: independent, and the
+count 2^m matches the rank. -/
+noncomputable def bevalBasis (m : ℕ) : Module.Basis (BUnit m) ℝ (CD m) :=
+  basisOfLinearIndependentOfCardEqFinrank' (K := ℝ) beval beval_linearIndependent
+    (by rw [bUnit_card, finrank_cd])
+
 /-- Embed a unit one level up, in the lower slot: the doubling that builds
 the centre family (i, j) at every height. -/
 def embed1 {m : ℕ} (x : CD m) : CD (m + 1) := dbl x (cdZero : CD m)
@@ -3449,5 +3473,7 @@ dependent type theory (propext, Classical.choice, Quot.sound) -- no
 #print axioms sum_lower_split
 #print axioms sum_upper_split
 #print axioms beval_linearIndependent
+#print axioms cdOne_ne_zero
+#print axioms bevalBasis
 
 end Foldlaw
