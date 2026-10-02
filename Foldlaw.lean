@@ -2628,6 +2628,7 @@ inductive BUnit : ℕ → Type
   | real0 : BUnit 0
   | lower {m : ℕ} (u : BUnit m) : BUnit (m + 1)
   | upper {m : ℕ} (u : BUnit m) : BUnit (m + 1)
+  deriving DecidableEq
 
 /-- The evaluation of a data unit: the corresponding tower element. -/
 def beval : ∀ {m : ℕ}, BUnit m → CD m
@@ -3060,6 +3061,38 @@ theorem fresh_mul_left {m : ℕ} (x y w : CD m) (e1 ex ey ew : BUnit m)
       exact basisUnit_neg_not hbu hby hfin.symm
   · rw [hv]
     exact hprod
+
+/-!
+### Floor 5, step B: the H/fresh decomposition
+
+With `DecidableEq` on the index set, any element splits as the sum of
+its four distinguished coordinates (the H-part over {e1, ex, ey, ew})
+and its fresh part (the rest of the basis). This is the partition the
+H^⊥-invariance of W will be read through.
+-/
+
+/-- The basis vectors are literally the evaluated units. -/
+theorem bevalBasis_apply (m : ℕ) (i : BUnit m) : bevalBasis m i = beval i :=
+  congrFun (coe_basisOfLinearIndependentOfCardEqFinrank' (K := ℝ) beval
+    beval_linearIndependent (by rw [bUnit_card, finrank_cd])) i
+
+/-- Any element is its H-part plus its fresh part. -/
+theorem a_decomp {m : ℕ} (e1 ex ey ew : BUnit m) (a : CD m) :
+    a = (∑ i ∈ ({e1, ex, ey, ew} : Finset (BUnit m)), (bevalBasis m).repr a i • beval i)
+      + ∑ i ∈ (Finset.univ \ ({e1, ex, ey, ew} : Finset (BUnit m))),
+          (bevalBasis m).repr a i • beval i := by
+  have hsr : ∑ i : BUnit m, (bevalBasis m).repr a i • beval i = a := by
+    have h := (bevalBasis m).sum_repr a
+    simp only [bevalBasis_apply] at h
+    exact h
+  have h1 : ∑ i ∈ (Finset.univ \ ({e1, ex, ey, ew} : Finset (BUnit m))),
+          (bevalBasis m).repr a i • beval i
+        + ∑ i ∈ ({e1, ex, ey, ew} : Finset (BUnit m)), (bevalBasis m).repr a i • beval i
+      = ∑ i : BUnit m, (bevalBasis m).repr a i • beval i :=
+    Finset.sum_sdiff (Finset.subset_univ _)
+  rw [add_comm] at h1
+  rw [h1]
+  exact hsr.symm
 
 /-- Embed a unit one level up, in the lower slot: the doubling that builds
 the centre family (i, j) at every height. -/
@@ -3656,5 +3689,7 @@ dependent type theory (propext, Classical.choice, Quot.sound) -- no
 #print axioms basisUnit_neg_not
 #print axioms fresh_anticomm
 #print axioms fresh_mul_left
+#print axioms bevalBasis_apply
+#print axioms a_decomp
 
 end Foldlaw
