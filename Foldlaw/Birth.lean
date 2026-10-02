@@ -1349,6 +1349,74 @@ theorem birth_mod_eight : ∀ {n : ℕ} (a b : BUnit (n + 3)),
       · have ih := birth_props a b (fun h' => h (Or.inl h')) (fun h' => h (Or.inr h')) hab'
         omega
 
+/-! ## Floor D: the annihilator of `z = e_a + e_b ℓ` has the birth dimension
+
+`ker_Lz_iff_ker_W` (BDI Prop. 11.1 for unit pairs with unit art) says the pair
+`(u, v)` is killed by left multiplication by `z = (e_a, e_b)` iff `v = (e_a u) e_b`
+and `W(e_a, e_b) u = 0`. The lift `u ↦ (u, (e_a u) e_b)` is an injective linear map,
+so `ker L_z = (ker W).map lift` and the dimensions agree. -/
+
+/-- The lift `u ↦ (u, (x u) y)` as a linear map. -/
+def annLift {m : ℕ} (x y : CD m) : CD m →ₗ[ℝ] CD (m + 1) :=
+  cdPairLm.comp (LinearMap.prod LinearMap.id ((mulRight y).comp (mulLeft x)))
+
+theorem annLift_apply {m : ℕ} (x y u : CD m) : annLift x y u = dbl u ((x * u) * y) := rfl
+
+theorem annLift_injective {m : ℕ} (x y : CD m) : Function.Injective (annLift x y) := by
+  intro u v h
+  have h' : dbl u ((x * u) * y) = dbl v ((x * v) * y) := h
+  injection h' with _ h1 _
+
+theorem ker_mulLeft_dbl_eq_map {m : ℕ} {a b : BUnit m} (ha : a ≠ bone m) (hb : b ≠ bone m) :
+    LinearMap.ker (mulLeft (dbl (beval a) (beval b)))
+      = (LinearMap.ker (WA (beval a) (beval b))).map (annLift (beval a) (beval b)) := by
+  ext w
+  cases w with
+  | dbl u v =>
+    rw [LinearMap.mem_ker, Submodule.mem_map]
+    have key := ker_Lz_iff_ker_W (beval a) (beval b) (lart a) (rart b) (conj_beval_of_ne ha)
+      (conj_beval_of_ne hb) (sq_beval ha) (sq_beval hb) u v
+    constructor
+    · intro h
+      obtain ⟨hv, hw⟩ := key.1 h
+      refine ⟨u, ?_, ?_⟩
+      · rw [LinearMap.mem_ker]; exact hw
+      · rw [annLift_apply, hv]
+    · rintro ⟨u', hu', he⟩
+      rw [annLift_apply] at he
+      injection he with _ h1 h2
+      subst h1
+      exact key.2 ⟨h2.symm, hu'⟩
+
+/-- **Annihilator theorem**: `dim ker L_{e_a + e_b ℓ} = birth a b` at level `m + 1`. -/
+theorem finrank_ann_birth {m : ℕ} (a b : BUnit m) (ha : a ≠ bone m) (hb : b ≠ bone m)
+    (hab : a ≠ b) :
+    Module.finrank ℝ (LinearMap.ker (mulLeft (dbl (beval a) (beval b)))) = birth a b := by
+  rw [ker_mulLeft_dbl_eq_map ha hb, ← finrank_ker_WA_birth a b ha hb hab]
+  exact (LinearEquiv.finrank_eq
+    (Submodule.equivMapOfInjective _ (annLift_injective _ _) _)).symm
+
+/-- From the octonions on, `birth` never vanishes. -/
+theorem birth_ne_zero {n : ℕ} (a b : BUnit (n + 3)) (ha : a ≠ bone (n + 3))
+    (hb : b ≠ bone (n + 3)) (hab : a ≠ b) : birth a b ≠ 0 := by
+  have := birth_mod_eight a b ha hb hab
+  omega
+
+/-- **Zero divisors, eternal**: at every level `≥ 4`, `z = e_a + e_b ℓ` (distinct
+imaginary `a, b`) has a non-zero annihilator. -/
+theorem exists_annihilator {n : ℕ} (a b : BUnit (n + 3)) (ha : a ≠ bone (n + 3))
+    (hb : b ≠ bone (n + 3)) (hab : a ≠ b) :
+    ∃ w : CD (n + 4), w ≠ 0 ∧ dbl (beval a) (beval b) * w = 0 := by
+  by_contra hcon
+  have hker : LinearMap.ker (mulLeft (dbl (beval a) (beval b))) = ⊥ := by
+    rw [LinearMap.ker_eq_bot']
+    intro w hw
+    by_contra hne
+    exact hcon ⟨w, hne, hw⟩
+  have h := finrank_ann_birth a b ha hb hab
+  rw [hker, finrank_bot] at h
+  exact birth_ne_zero a b ha hb hab h.symm
+
 /-! ## Census check (computable): histogram of `birth` over unordered imaginary pairs -/
 
 /-- Number of ordered pairs of distinct imaginary indices at level `m` with `birth = v`. -/
@@ -1374,5 +1442,7 @@ def birthHistogram (m : ℕ) : List (ℕ × ℕ) :=
 #print axioms finrank_ker_WA_birth'
 #print axioms birth_props
 #print axioms birth_mod_eight
+#print axioms finrank_ann_birth
+#print axioms exists_annihilator
 
 end Foldlaw
