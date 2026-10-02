@@ -8,3 +8,4 @@ git = "https://github.com/leanprover-community/mathlib4"
 
 [[lean_lib]]
 name = "Foldlaw"
+globs = ["Foldlaw.+"]
