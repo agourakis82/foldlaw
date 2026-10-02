@@ -2481,6 +2481,135 @@ theorem basisUnit_mul_distinct {m : ℕ} {u v : CD m}
       (u * v = w ∨ u * v = neg w) :=
   basisUnit_mul_distinct_aux m u v hu hv hcu hcv hne
 
+/-!
+### Basis infrastructure, floor 3½: the cancellation laws
+
+If x·u lands on ±y then u is already the third quaternion unit ±w.
+This is the cancellation the H^⊥-invariance of W will need: fresh
+products can never collapse back onto the quaternion axes. Only unit
+art, no alternativity, no coordinates.
+-/
+
+/-- −1 multiplies as negation on the left, at every level. -/
+theorem neg_one_mul {m : ℕ} (a : CD m) : neg (cdOne : CD m) * a = neg a := by
+  rw [neg_mul, one_mul]
+
+/-- Right multiplication by −1 is negation, at every level. -/
+theorem mul_neg_one {m : ℕ} (a : CD m) : a * neg (cdOne : CD m) = neg a := by
+  rw [mul_neg, mul_one]
+
+/-- Negation is injective at every level. -/
+theorem neg_inj {m : ℕ} {a b : CD m} (h : neg a = neg b) : a = b := by
+  have h2 := congrArg neg h
+  rw [neg_neg, neg_neg] at h2
+  exact h2
+
+/-- An imaginary basis unit squares to −1. -/
+theorem basisUnit_sq {m : ℕ} {x : CD m} (hx : BasisUnit x) (hcx : conj x = neg x) :
+    x * x = neg (cdOne : CD m) := by
+  rcases (basisUnit_pack hx).1 with hreal | ⟨-, hs⟩
+  · rw [hreal, conj_one] at hcx
+    exact absurd hcx cdOne_ne_neg_one
+  · exact hs
+
+/-- Core cancellation: if x·y = ±w and x·y = −u, then u = ±w. -/
+theorem basisUnit_cancel_core {m : ℕ} {x y u w : CD m}
+    (hxy : x * y = w ∨ x * y = neg w) (h1 : x * y = neg u) :
+    u = w ∨ u = neg w := by
+  rcases hxy with hw | hw
+  · rw [hw] at h1
+    exact Or.inr (by rw [h1, neg_neg])
+  · exact Or.inl (by rw [← neg_neg u, ← (hw.symm.trans h1), neg_neg])
+
+/-- Left cancellation: if x·u lands on ±y then u = ±w, where w is the
+fresh unit carried by x·y. -/
+theorem basisUnit_cancel_left {m : ℕ} {x y u w : CD m}
+    (hx : BasisUnit x) (hcx : conj x = neg x)
+    (hxy : x * y = w ∨ x * y = neg w)
+    (h : x * u = y ∨ x * u = neg y) :
+    u = w ∨ u = neg w := by
+  have hart : x * (x * u) = neg u := by
+    rw [basisUnit_left_art hx u, basisUnit_sq hx hcx, neg_one_mul]
+  rcases h with h | h
+  · rw [h] at hart
+    exact basisUnit_cancel_core hxy hart
+  · rw [h, mul_neg] at hart
+    have e : u = x * y := (neg_inj hart).symm
+    rcases hxy with hw | hw
+    · rw [hw] at e; exact Or.inl e
+    · rw [hw] at e; exact Or.inr e
+
+/-- Right cancellation: if u·y lands on ±x then u = ±w. -/
+theorem basisUnit_cancel_right {m : ℕ} {x y u w : CD m}
+    (hy : BasisUnit y) (hcy : conj y = neg y)
+    (hxy : x * y = w ∨ x * y = neg w)
+    (h : u * y = x ∨ u * y = neg x) :
+    u = w ∨ u = neg w := by
+  have hart : (u * y) * y = neg u := by
+    rw [basisUnit_right_art hy u, basisUnit_sq hy hcy, mul_neg_one]
+  rcases h with h | h
+  · rw [h] at hart
+    exact basisUnit_cancel_core hxy hart
+  · rw [h, neg_mul] at hart
+    have e : u = x * y := (neg_inj hart).symm
+    rcases hxy with hw | hw
+    · rw [hw] at e; exact Or.inl e
+    · rw [hw] at e; exact Or.inr e
+
+/-- Companion: the third unit of the quaternion (x, y) sends w back to
+±y under x. -/
+theorem basisUnit_xw {m : ℕ} {x y w : CD m}
+    (hx : BasisUnit x) (hcx : conj x = neg x)
+    (hxy : x * y = w ∨ x * y = neg w) :
+    x * w = y ∨ x * w = neg y := by
+  have hart : x * (x * y) = neg y := by
+    rw [basisUnit_left_art hx y, basisUnit_sq hx hcx, neg_one_mul]
+  rcases hxy with hw | hw
+  · rw [hw] at hart
+    exact Or.inr hart
+  · rw [hw, mul_neg] at hart
+    exact Or.inl (neg_inj hart)
+
+/-- Companion: w sends y back to ±x on the right. -/
+theorem basisUnit_wy {m : ℕ} {x y w : CD m}
+    (hy : BasisUnit y) (hcy : conj y = neg y)
+    (hxy : x * y = w ∨ x * y = neg w) :
+    w * y = x ∨ w * y = neg x := by
+  have hart : (x * y) * y = neg x := by
+    rw [basisUnit_right_art hy x, basisUnit_sq hy hcy, mul_neg_one]
+  rcases hxy with hw | hw
+  · rw [hw] at hart
+    exact Or.inr hart
+  · rw [hw, neg_mul] at hart
+    exact Or.inl (neg_inj hart)
+
+/-- Companion: y sends w back to ±x. -/
+theorem basisUnit_yw {m : ℕ} {x y w : CD m}
+    (hx : BasisUnit x) (hcx : conj x = neg x)
+    (hy : BasisUnit y) (hcy : conj y = neg y) (hne : x ≠ y)
+    (hxy : x * y = w ∨ x * y = neg w) :
+    y * w = x ∨ y * w = neg x := by
+  have hanti : y * x = neg (x * y) := basisUnit_anticomm hx hy hcx hcy hne
+  rcases hxy with hw | hw
+  · rw [hw] at hanti
+    rcases basisUnit_xw hy hcy (Or.inl hanti) with h2 | h2
+    · rw [mul_neg] at h2
+      refine Or.inr ?_
+      have h3 := congrArg neg h2
+      rw [neg_neg] at h3
+      exact h3
+    · rw [mul_neg] at h2
+      exact Or.inl (neg_inj h2)
+  · rw [hw] at hanti
+    rcases basisUnit_xw hy hcy (Or.inr hanti) with h2 | h2
+    · rw [mul_neg] at h2
+      refine Or.inr ?_
+      have h3 := congrArg neg h2
+      rw [neg_neg] at h3
+      exact h3
+    · rw [mul_neg] at h2
+      exact Or.inl (neg_inj h2)
+
 /-- Embed a unit one level up, in the lower slot: the doubling that builds
 the centre family (i, j) at every height. -/
 def embed1 {m : ℕ} (x : CD m) : CD (m + 1) := dbl x (cdZero : CD m)
@@ -2959,7 +3088,13 @@ lower and upper slots never meet (`lower_ne_upper`), and distinct
 imaginary basis units multiply to a FRESH imaginary basis unit up to
 sign — never ±1, never either factor (`basisUnit_mul_distinct`, level
 induction; the obtain pattern splits the product disjunction into an
-`= w` and an `= −w` branch at the point of destructing).
+`= w` and an `= −w` branch at the point of destructing). Floor 3½ is
+in: the cancellation laws — if x·u lands on ±y then u is already ±w
+(`basisUnit_cancel_left/right`, via unit art only), with the
+companions x·w = ±y, w·y = ±x, y·w = ±x (`basisUnit_xw/wy/yw`) and
+the sign utilities `neg_one_mul`, `mul_neg_one`, `neg_inj`,
+`basisUnit_sq`. These are the exact gates the H^⊥-invariance of W
+will pass through.
 `#print axioms` below must show only the three standard axioms of Lean's
 dependent type theory (propext, Classical.choice, Quot.sound) -- no
 `sorryAx`, no hand-added `axiom` decls.
@@ -3042,5 +3177,15 @@ dependent type theory (propext, Classical.choice, Quot.sound) -- no
 #print axioms lower_ne_upper
 #print axioms basisUnit_mul_distinct_aux
 #print axioms basisUnit_mul_distinct
+#print axioms neg_one_mul
+#print axioms mul_neg_one
+#print axioms neg_inj
+#print axioms basisUnit_sq
+#print axioms basisUnit_cancel_core
+#print axioms basisUnit_cancel_left
+#print axioms basisUnit_cancel_right
+#print axioms basisUnit_xw
+#print axioms basisUnit_wy
+#print axioms basisUnit_yw
 
 end Foldlaw
