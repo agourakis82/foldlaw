@@ -4042,6 +4042,783 @@ theorem weak_inclusion {m : ℕ} (x y a : CD m)
   exact C_of_W_of_S x y a hcx hx2 hartLx hW hS0 hS1
 
 /-!
+### The fold law off full alternativity
+
+A single imaginary basis unit is left-bijective at every level: the unit art
+gives x·(x·t) = −t, so left multiplication by x and by −x are inverse linear
+maps. The complementary block C is linear for the same reason W_A is. On the
+fresh complement of H = span{1, x, y, xy} the two symmetric parts vanish
+without any hypothesis on W, and the resulting operator identity is
+C(x·f) = x·W(f). That is check F, and with the block lemma it is the fold.
+-/
+
+/-- Left multiplication by an imaginary basis unit is inverted by
+multiplication by its negative. The art hypothesis is the unit art of x
+alone. -/
+theorem basisUnit_mulLeft_right_inv {m : ℕ} {x : CD m}
+    (hx : BasisUnit x) (hcx : conj x = neg x) :
+    (mulLeft x).comp (mulLeft (neg x)) = LinearMap.id := by
+  ext a
+  show x * (neg x * a) = a
+  rw [neg_mul, mul_neg, basisUnit_left_art hx a, basisUnit_sq hx hcx,
+    neg_one_mul, neg_neg]
+
+theorem basisUnit_mulLeft_left_inv {m : ℕ} {x : CD m}
+    (hx : BasisUnit x) (hcx : conj x = neg x) :
+    (mulLeft (neg x)).comp (mulLeft x) = LinearMap.id := by
+  ext a
+  show neg x * (x * a) = a
+  rw [neg_mul, basisUnit_left_art hx a, basisUnit_sq hx hcx, neg_one_mul, neg_neg]
+
+/-- L_x as a linear automorphism, from the unit art. -/
+noncomputable def basisUnit_Lx {m : ℕ} {x : CD m}
+    (hx : BasisUnit x) (hcx : conj x = neg x) : CD m ≃ₗ[ℝ] CD m :=
+  LinearEquiv.ofLinearMap (mulLeft x) (mulLeft (neg x))
+    (basisUnit_mulLeft_right_inv hx hcx) (basisUnit_mulLeft_left_inv hx hcx)
+
+/-- The complementary block C(u) = y·(x̄·u) + x̄·(y·u), as a linear map. -/
+def CA {m : ℕ} (x y : CD m) : CD m →ₗ[ℝ] CD m :=
+  (mulLeft y).comp (mulLeft (conj x)) + (mulLeft (conj x)).comp (mulLeft y)
+
+theorem CA_apply {m : ℕ} (x y a : CD m) :
+    CA x y a = y * (conj x * a) + conj x * (y * a) := rfl
+
+/-- Equality in a four-element index set implies membership. -/
+theorem quad_mem {m : ℕ} (e1 ex ey ew j : BUnit m)
+    (hj : j = e1 ∨ j = ex ∨ j = ey ∨ j = ew) :
+    j ∈ ({e1, ex, ey, ew} : Finset (BUnit m)) := by
+  rcases hj with rfl | rfl | rfl | rfl <;> simp
+
+/-- An index outside the four-element set misses each of them. -/
+theorem quad_gate {m : ℕ} (e1 ex ey ew i : BUnit m)
+    (hi : i ∉ ({e1, ex, ey, ew} : Finset (BUnit m))) :
+    i ≠ e1 ∧ i ≠ ex ∧ i ≠ ey ∧ i ≠ ew :=
+  ⟨fun h => hi (quad_mem e1 ex ey ew i (Or.inl h)),
+    fun h => hi (quad_mem e1 ex ey ew i (Or.inr (Or.inl h))),
+    fun h => hi (quad_mem e1 ex ey ew i (Or.inr (Or.inr (Or.inl h)))),
+    fun h => hi (quad_mem e1 ex ey ew i (Or.inr (Or.inr (Or.inr h))))⟩
+
+/-- Membership in the four-element set is one of the four equalities. -/
+theorem quad_jor {m : ℕ} (e1 ex ey ew j : BUnit m)
+    (hj : j ∈ ({e1, ex, ey, ew} : Finset (BUnit m))) :
+    j = e1 ∨ j = ex ∨ j = ey ∨ j = ew := by
+  rcases Finset.mem_insert.mp hj with h | h
+  · exact Or.inl h
+  · rcases Finset.mem_insert.mp h with h | h
+    · exact Or.inr (Or.inl h)
+    · rcases Finset.mem_insert.mp h with h | h
+      · exact Or.inr (Or.inr (Or.inl h))
+      · exact Or.inr (Or.inr (Or.inr (Finset.mem_singleton.mp h)))
+
+/-- The coordinate functional reads the basis representation. -/
+theorem coordLm_repr {m : ℕ} (j : BUnit m) (a : CD m) :
+    coordLm j a = (bevalBasis m).repr a j := by
+  simp [coordLm, Finsupp.lapply_apply]
+
+/-- Projection onto the four distinguished coordinates. -/
+noncomputable def Hpart {m : ℕ} (e1 ex ey ew : BUnit m) : CD m →ₗ[ℝ] CD m :=
+  (coordLm e1).smulRight (beval e1)
+    + ((coordLm ex).smulRight (beval ex)
+        + ((coordLm ey).smulRight (beval ey)
+            + (coordLm ew).smulRight (beval ew)))
+
+theorem Hpart_apply {m : ℕ} (e1 ex ey ew : BUnit m) (a : CD m) :
+    Hpart e1 ex ey ew a =
+      coordLm e1 a • beval e1
+        + (coordLm ex a • beval ex
+            + (coordLm ey a • beval ey + coordLm ew a • beval ew)) := rfl
+
+theorem Hset_sum_eq {m : ℕ} (e1 ex ey ew : BUnit m)
+    (hd1 : e1 ∉ ({ex, ey, ew} : Finset (BUnit m)))
+    (hd2 : ex ∉ ({ey, ew} : Finset (BUnit m)))
+    (hd3 : ey ∉ ({ew} : Finset (BUnit m)))
+    (g : BUnit m → CD m) :
+    ∑ i ∈ ({e1, ex, ey, ew} : Finset (BUnit m)), g i
+      = g e1 + (g ex + (g ey + g ew)) := by
+  rw [Finset.sum_insert hd1, Finset.sum_insert hd2, Finset.sum_insert hd3,
+    Finset.sum_singleton]
+
+/-- A pair of distinct imaginary basis units, with the quaternion indices
+{1, x, y, w = ±xy} already chosen and proved distinct. -/
+structure ImagPair (m : ℕ) where
+  x : CD m
+  y : CD m
+  bx : BasisUnit x
+  cx : conj x = neg x
+  byY : BasisUnit y
+  cy : conj y = neg y
+  ne : x ≠ y
+  w : CD m
+  bw : BasisUnit w
+  cw : conj w = neg w
+  wneX : w ≠ x
+  wneY : w ≠ y
+  xy : x * y = w ∨ x * y = neg w
+  e1 : BUnit m
+  ex : BUnit m
+  ey : BUnit m
+  ew : BUnit m
+  he1 : beval e1 = (cdOne : CD m)
+  hex : beval ex = x
+  hey : beval ey = y
+  hew : beval ew = w
+  he1x : e1 ≠ ex
+  he1y : e1 ≠ ey
+  he1w : e1 ≠ ew
+  hexy : ex ≠ ey
+  hexw : ex ≠ ew
+  heyw : ey ≠ ew
+  hd1 : e1 ∉ ({ex, ey, ew} : Finset (BUnit m))
+  hd2 : ex ∉ ({ey, ew} : Finset (BUnit m))
+  hd3 : ey ∉ ({ew} : Finset (BUnit m))
+
+theorem ImagPair.sqx {m : ℕ} (P : ImagPair m) :
+    P.x * P.x = neg (cdOne : CD m) := basisUnit_sq P.bx P.cx
+
+theorem ImagPair.sqy {m : ℕ} (P : ImagPair m) :
+    P.y * P.y = neg (cdOne : CD m) := basisUnit_sq P.byY P.cy
+
+theorem ImagPair.artLx {m : ℕ} (P : ImagPair m) (t : CD m) :
+    P.x * (P.x * t) = (P.x * P.x) * t := basisUnit_left_art P.bx t
+
+theorem ImagPair.artRy {m : ℕ} (P : ImagPair m) (t : CD m) :
+    (t * P.y) * P.y = t * (P.y * P.y) := basisUnit_right_art P.byY t
+
+noncomputable def ImagPair.Lx {m : ℕ} (P : ImagPair m) : CD m ≃ₗ[ℝ] CD m :=
+  basisUnit_Lx P.bx P.cx
+
+def ImagPair.Hset {m : ℕ} (P : ImagPair m) : Finset (BUnit m) :=
+  {P.e1, P.ex, P.ey, P.ew}
+
+theorem ImagPair.hyxy {m : ℕ} (P : ImagPair m) :
+    P.y * (P.x * P.y) = neg ((P.x * P.y) * P.y) := by
+  rcases P.xy with hc | hc
+  · rw [hc]
+    exact basisUnit_anticomm P.bw P.byY P.cw P.cy P.wneY
+  · rw [hc, mul_neg, neg_mul, neg_neg,
+      basisUnit_anticomm P.bw P.byY P.cw P.cy P.wneY, neg_neg]
+
+theorem ImagPair.w_of_neg {m : ℕ} (P : ImagPair m) (hc : P.x * P.y = neg P.w) :
+    P.w = neg (P.x * P.y) := by
+  have h2 := congrArg neg hc
+  rw [neg_neg] at h2
+  exact h2.symm
+
+/-- Every distinct imaginary basis pair carries such indices, and the
+chosen pair is the one that was given. -/
+theorem ImagPair.exists_eq {m : ℕ} (x y : CD m)
+    (hbx : BasisUnit x) (hcx : conj x = neg x)
+    (hby : BasisUnit y) (hcy : conj y = neg y) (hne : x ≠ y) :
+    ∃ P : ImagPair m, P.x = x ∧ P.y = y := by
+  obtain ⟨hpx, -, -⟩ := basisUnit_pack hbx
+  rcases hpx with hreal | ⟨-, -⟩
+  · rw [hreal] at hcx
+    rw [conj_one] at hcx
+    exact absurd hcx cdOne_ne_neg_one
+  obtain ⟨hpy, -, -⟩ := basisUnit_pack hby
+  rcases hpy with hreal | ⟨-, -⟩
+  · rw [hreal] at hcy
+    rw [conj_one] at hcy
+    exact absurd hcy cdOne_ne_neg_one
+  obtain ⟨w, hbw, hcw, hwne_x, hwne_y, hxyw⟩ :=
+    basisUnit_mul_distinct hbx hby hcx hcy hne
+  obtain ⟨e1, he1⟩ := basisUnit_beval (basisUnit_cdOne m)
+  obtain ⟨ex, hex⟩ := basisUnit_beval hbx
+  obtain ⟨ey, hey⟩ := basisUnit_beval hby
+  obtain ⟨ew, hew⟩ := basisUnit_beval hbw
+  have hCD1 : ∀ z : CD m, conj z = neg z → z ≠ (cdOne : CD m) := by
+    intro z hz hz1
+    rw [hz1] at hz
+    rw [conj_one] at hz
+    exact cdOne_ne_neg_one hz
+  have hdv : ∀ p q : CD m, conj p = neg p → conj q = neg q → p ≠ q →
+      ∀ u v : BUnit m, beval u = p → beval v = q → u ≠ v := by
+    intro p q _ _ hpq u v hu hv h
+    apply hpq
+    rw [← hu, ← hv, h]
+  have he1x : e1 ≠ ex := fun h => hCD1 x hcx (by rw [← hex, ← he1, h])
+  have he1y : e1 ≠ ey := fun h => hCD1 y hcy (by rw [← hey, ← he1, h])
+  have he1w : e1 ≠ ew := fun h => hCD1 w hcw (by rw [← hew, ← he1, h])
+  have hexy : ex ≠ ey := hdv x y hcx hcy hne ex ey hex hey
+  have hexw : ex ≠ ew := hdv x w hcx hcw (Ne.symm hwne_x) ex ew hex hew
+  have heyw : ey ≠ ew := hdv y w hcy hcw (Ne.symm hwne_y) ey ew hey hew
+  have hd1 : e1 ∉ ({ex, ey, ew} : Finset (BUnit m)) := by
+    intro h
+    rcases Finset.mem_insert.mp h with h' | h'
+    · exact he1x h'
+    · rcases Finset.mem_insert.mp h' with h' | h'
+      · exact he1y h'
+      · exact he1w (Finset.mem_singleton.mp h')
+  have hd2 : ex ∉ ({ey, ew} : Finset (BUnit m)) := by
+    intro h
+    rcases Finset.mem_insert.mp h with h' | h'
+    · exact hexy h'
+    · exact hexw (Finset.mem_singleton.mp h')
+  have hd3 : ey ∉ ({ew} : Finset (BUnit m)) :=
+    fun h => heyw (Finset.mem_singleton.mp h)
+  exact ⟨⟨x, y, hbx, hcx, hby, hcy, hne, w, hbw, hcw, hwne_x, hwne_y, hxyw,
+    e1, ex, ey, ew, he1, hex, hey, hew, he1x, he1y, he1w, hexy, hexw, heyw,
+    hd1, hd2, hd3⟩, rfl, rfl⟩
+
+theorem ImagPair.Hsum_eq_Hpart {m : ℕ} (P : ImagPair m) (a : CD m) :
+    ∑ i ∈ P.Hset, (bevalBasis m).repr a i • beval i
+      = Hpart P.e1 P.ex P.ey P.ew a := by
+  rw [show P.Hset = ({P.e1, P.ex, P.ey, P.ew} : Finset (BUnit m)) from rfl,
+    Hset_sum_eq P.e1 P.ex P.ey P.ew P.hd1 P.hd2 P.hd3,
+    Hpart_apply]
+  simp only [coordLm_repr]
+
+/-- Vanishing of the H-projection means the vector is its fresh sum. -/
+theorem ImagPair.eq_fresh_sum {m : ℕ} (P : ImagPair m) (a : CD m)
+    (hH : Hpart P.e1 P.ex P.ey P.ew a = (cdZero : CD m)) :
+    a = ∑ i ∈ Finset.univ \ ({P.e1, P.ex, P.ey, P.ew} : Finset (BUnit m)),
+      (bevalBasis m).repr a i • beval i := by
+  conv_lhs => rw [a_decomp P.e1 P.ex P.ey P.ew a]
+  have hsum := P.Hsum_eq_Hpart a
+  rw [show P.Hset = ({P.e1, P.ex, P.ey, P.ew} : Finset (BUnit m)) from rfl] at hsum
+  rw [hsum, hH, zero_add]
+
+/-- W(a) = 0 kills the four H-coordinates. The ±2 table is the same
+reading as `weak_inclusion`; it is restated so the kernel inclusion
+`ker W ⊆ H^⊥` is a named lemma. -/
+theorem ImagPair.ker_Hcoords {m : ℕ} (P : ImagPair m) (a : CD m)
+    (hW : (WA P.x P.y) a = (cdZero : CD m)) :
+    (bevalBasis m).repr a P.e1 = 0 ∧ (bevalBasis m).repr a P.ex = 0 ∧
+      (bevalBasis m).repr a P.ey = 0 ∧ (bevalBasis m).repr a P.ew = 0 := by
+  rcases P with ⟨x, y, hbx, hcx, hby, hcy, hne, w, hbw, hcw, hwne_x, hwne_y, hxyw,
+    e1, ex, ey, ew, he1, hex, hey, hew, he1x, he1y, he1w, hexy, hexw, heyw,
+    hd1, hd2, hd3⟩
+  have hx2 : x * x = neg (cdOne : CD m) := basisUnit_sq hbx hcx
+  have hy2 : y * y = neg (cdOne : CD m) := basisUnit_sq hby hcy
+  have hartLx : ∀ t : CD m, x * (x * t) = (x * x) * t := basisUnit_left_art hbx
+  have hartRy : ∀ t : CD m, (t * y) * y = t * (y * y) := basisUnit_right_art hby
+  have hyxy : y * (x * y) = neg ((x * y) * y) := by
+    rcases hxyw with hc | hc
+    · rw [hc]
+      exact basisUnit_anticomm hbw hby hcw hcy hwne_y
+    · rw [hc, mul_neg, neg_mul, neg_neg,
+        basisUnit_anticomm hbw hby hcw hcy hwne_y, neg_neg]
+  have hwxy_neg : x * y = neg w → w = neg (x * y) := by
+    intro hc
+    have h2 := congrArg neg hc
+    rw [neg_neg] at h2
+    exact h2.symm
+  have hfresh : ∀ (i : BUnit m),
+      i ∈ Finset.univ \ ({e1, ex, ey, ew} : Finset (BUnit m)) →
+      ∀ j : BUnit m, j ∈ ({e1, ex, ey, ew} : Finset (BUnit m)) →
+      coordLm j ((WA x y) (beval i)) = 0 := by
+    intro i hi j hj
+    obtain ⟨hi1, hix, hiy, hiw⟩ := quad_gate e1 ex ey ew i (Finset.mem_sdiff.mp hi).2
+    exact fresh_W_coord_zero x y w e1 ex ey ew hbx hcx hby hcy hbw hne hxyw
+      he1 hex hey hew i hi1 hix hiy hiw j (quad_jor e1 ex ey ew j hj)
+  have hjew : ew ∈ ({e1, ex, ey, ew} : Finset (BUnit m)) :=
+    quad_mem e1 ex ey ew ew (Or.inr (Or.inr (Or.inr rfl)))
+  have hjey : ey ∈ ({e1, ex, ey, ew} : Finset (BUnit m)) :=
+    quad_mem e1 ex ey ew ey (Or.inr (Or.inr (Or.inl rfl)))
+  have hjex : ex ∈ ({e1, ex, ey, ew} : Finset (BUnit m)) :=
+    quad_mem e1 ex ey ew ex (Or.inr (Or.inl rfl))
+  have hje1 : e1 ∈ ({e1, ex, ey, ew} : Finset (BUnit m)) :=
+    quad_mem e1 ex ey ew e1 (Or.inl rfl)
+  have hW1 : (WA x y) ((cdOne : CD m)) = x * y + x * y := W_val_one x y
+  have hWx : (WA x y) x = neg y + neg y := W_val_x x y hx2 hartLx
+  have hWy : (WA x y) y = neg x + neg x := W_val_y x y hy2 hartRy
+  have hWxy : (WA x y) (x * y) = cdOne + cdOne :=
+    W_val_xy x y hx2 hy2 hyxy hartLx hartRy
+  have hWneg : ∀ t : CD m, (WA x y) (neg t) = neg ((WA x y) t) :=
+    fun t => map_neg (WA x y) t
+  have hce1 : coordLm e1 (beval e1) = 1 := by rw [coord_apply]; exact if_pos rfl
+  have hcex : coordLm ex (beval ex) = 1 := by rw [coord_apply]; exact if_pos rfl
+  have hcey : coordLm ey (beval ey) = 1 := by rw [coord_apply]; exact if_pos rfl
+  have hcew : coordLm ew (beval ew) = 1 := by rw [coord_apply]; exact if_pos rfl
+  have hWa : (WA x y) a = (cdZero : CD m) := hW
+  have h0ew : coordLm ew ((WA x y) a) = 0 := by
+    rw [hWa]
+    exact map_zero (coordLm ew)
+  rw [W_coord_split x y e1 ex ey ew a hd1 hd2 hd3 ew
+      (fun i hi => hfresh i hi ew hjew)] at h0ew
+  obtain ⟨sew, hsew, pew1⟩ : ∃ s : ℝ, s ≠ 0 ∧
+      coordLm ew ((WA x y) (beval e1)) = s := by
+    rcases hxyw with hc | hc
+    · refine ⟨2, by norm_num, ?_⟩
+      rw [he1, hW1, map_add, hc, ← hew, hcew]
+      norm_num
+    · refine ⟨-2, by norm_num, ?_⟩
+      rw [he1, hW1, map_add, hc, coord_neg, ← hew, hcew]
+      norm_num
+  have pewx : coordLm ew ((WA x y) (beval ex)) = 0 := by
+    rw [hex, hWx, map_add, coord_neg, ← hey, coord_val_ne ey ew heyw]
+    norm_num
+  have pewy : coordLm ew ((WA x y) (beval ey)) = 0 := by
+    rw [hey, hWy, map_add, coord_neg, ← hex, coord_val_ne ex ew hexw]
+    norm_num
+  have peww : coordLm ew ((WA x y) (beval ew)) = 0 := by
+    rcases hxyw with hc | hc
+    · rw [hew, ← hc, hWxy, ← he1, map_add, coord_val_ne e1 ew he1w]
+      norm_num
+    · rw [hew, hwxy_neg hc, hWneg, hWxy, coord_neg, ← he1, map_add,
+        coord_val_ne e1 ew he1w]
+      norm_num
+  rw [pew1, pewx, pewy, peww] at h0ew
+  simp only [MulZeroClass.mul_zero, AddZeroClass.add_zero] at h0ew
+  have ce1z : (bevalBasis m).repr a e1 = 0 :=
+    (mul_eq_zero.mp h0ew).resolve_right hsew
+  have h0ey : coordLm ey ((WA x y) a) = 0 := by
+    rw [hWa]
+    exact map_zero (coordLm ey)
+  rw [W_coord_split x y e1 ex ey ew a hd1 hd2 hd3 ey
+      (fun i hi => hfresh i hi ey hjey)] at h0ey
+  have pey1 : coordLm ey ((WA x y) (beval e1)) = 0 := by
+    rw [he1, hW1, map_add]
+    rcases hxyw with hc | hc
+    · rw [hc, ← hew, coord_val_ne ew ey (Ne.symm heyw)]
+      norm_num
+    · rw [hc, coord_neg, ← hew, coord_val_ne ew ey (Ne.symm heyw)]
+      norm_num
+  have peyx : coordLm ey ((WA x y) (beval ex)) = -2 := by
+    rw [hex, hWx, map_add, coord_neg, ← hey, hcey]
+    norm_num
+  have peyy : coordLm ey ((WA x y) (beval ey)) = 0 := by
+    rw [hey, hWy, map_add, coord_neg, ← hex, coord_val_ne ex ey hexy]
+    norm_num
+  have peyw : coordLm ey ((WA x y) (beval ew)) = 0 := by
+    rcases hxyw with hc | hc
+    · rw [hew, ← hc, hWxy, ← he1, map_add, coord_val_ne e1 ey he1y]
+      norm_num
+    · rw [hew, hwxy_neg hc, hWneg, hWxy, coord_neg, ← he1, map_add,
+        coord_val_ne e1 ey he1y]
+      norm_num
+  rw [pey1, peyx, peyy, peyw] at h0ey
+  simp only [MulZeroClass.mul_zero, AddZeroClass.add_zero, AddZeroClass.zero_add] at h0ey
+  have cexz : (bevalBasis m).repr a ex = 0 :=
+    (mul_eq_zero.mp h0ey).resolve_right (by norm_num)
+  have h0ex : coordLm ex ((WA x y) a) = 0 := by
+    rw [hWa]
+    exact map_zero (coordLm ex)
+  rw [W_coord_split x y e1 ex ey ew a hd1 hd2 hd3 ex
+      (fun i hi => hfresh i hi ex hjex)] at h0ex
+  have pex1 : coordLm ex ((WA x y) (beval e1)) = 0 := by
+    rw [he1, hW1, map_add]
+    rcases hxyw with hc | hc
+    · rw [hc, ← hew, coord_val_ne ew ex (Ne.symm hexw)]
+      norm_num
+    · rw [hc, coord_neg, ← hew, coord_val_ne ew ex (Ne.symm hexw)]
+      norm_num
+  have pexx : coordLm ex ((WA x y) (beval ex)) = 0 := by
+    rw [hex, hWx, map_add, coord_neg, ← hey, coord_val_ne ey ex (Ne.symm hexy)]
+    norm_num
+  have pexy : coordLm ex ((WA x y) (beval ey)) = -2 := by
+    rw [hey, hWy, map_add, coord_neg, ← hex, hcex]
+    norm_num
+  have pexw : coordLm ex ((WA x y) (beval ew)) = 0 := by
+    rcases hxyw with hc | hc
+    · rw [hew, ← hc, hWxy, ← he1, map_add, coord_val_ne e1 ex he1x]
+      norm_num
+    · rw [hew, hwxy_neg hc, hWneg, hWxy, coord_neg, ← he1, map_add,
+        coord_val_ne e1 ex he1x]
+      norm_num
+  rw [pex1, pexx, pexy, pexw] at h0ex
+  simp only [MulZeroClass.mul_zero, AddZeroClass.add_zero, AddZeroClass.zero_add] at h0ex
+  have ceyz : (bevalBasis m).repr a ey = 0 :=
+    (mul_eq_zero.mp h0ex).resolve_right (by norm_num)
+  have h0e1 : coordLm e1 ((WA x y) a) = 0 := by
+    rw [hWa]
+    exact map_zero (coordLm e1)
+  rw [W_coord_split x y e1 ex ey ew a hd1 hd2 hd3 e1
+      (fun i hi => hfresh i hi e1 hje1)] at h0e1
+  have pe11 : coordLm e1 ((WA x y) (beval e1)) = 0 := by
+    rw [he1, hW1, map_add]
+    rcases hxyw with hc | hc
+    · rw [hc, ← hew, coord_val_ne ew e1 (Ne.symm he1w)]
+      norm_num
+    · rw [hc, coord_neg, ← hew, coord_val_ne ew e1 (Ne.symm he1w)]
+      norm_num
+  have pe1x : coordLm e1 ((WA x y) (beval ex)) = 0 := by
+    rw [hex, hWx, map_add, coord_neg, ← hey, coord_val_ne ey e1 (Ne.symm he1y)]
+    norm_num
+  have pe1y : coordLm e1 ((WA x y) (beval ey)) = 0 := by
+    rw [hey, hWy, map_add, coord_neg, ← hex, coord_val_ne ex e1 (Ne.symm he1x)]
+    norm_num
+  obtain ⟨se1, hse1, pe1w⟩ : ∃ s : ℝ, s ≠ 0 ∧
+      coordLm e1 ((WA x y) (beval ew)) = s := by
+    rcases hxyw with hc | hc
+    · refine ⟨2, by norm_num, ?_⟩
+      rw [hew, ← hc, hWxy, ← he1, map_add, hce1]
+      norm_num
+    · refine ⟨-2, by norm_num, ?_⟩
+      rw [hew, hwxy_neg hc, hWneg, hWxy, coord_neg, ← he1, map_add, hce1]
+      norm_num
+  rw [pe11, pe1x, pe1y, pe1w] at h0e1
+  simp only [MulZeroClass.mul_zero, AddZeroClass.add_zero, AddZeroClass.zero_add] at h0e1
+  have cewz : (bevalBasis m).repr a ew = 0 :=
+    (mul_eq_zero.mp h0e1).resolve_right hse1
+  exact ⟨ce1z, cexz, ceyz, cewz⟩
+
+theorem ImagPair.Hpart_of_ker {m : ℕ} (P : ImagPair m) (a : CD m)
+    (hW : (WA P.x P.y) a = (cdZero : CD m)) :
+    Hpart P.e1 P.ex P.ey P.ew a = (cdZero : CD m) := by
+  obtain ⟨h1, hx, hy, hw⟩ := P.ker_Hcoords a hW
+  rw [Hpart_apply, coordLm_repr, coordLm_repr, coordLm_repr, coordLm_repr, h1, hx, hy, hw,
+    _root_.zero_smul, _root_.zero_smul, _root_.zero_smul, _root_.zero_smul,
+    AddZeroClass.zero_add, AddZeroClass.zero_add, AddZeroClass.zero_add]
+  rfl
+
+/-- S_y vanishes on every fresh sum, with no hypothesis on W. -/
+theorem ImagPair.fresh_Sy {m : ℕ} (P : ImagPair m) (c : BUnit m → ℝ) :
+    (∑ i ∈ Finset.univ \ ({P.e1, P.ex, P.ey, P.ew} : Finset (BUnit m)), c i • beval i) * P.y
+      + P.y * ∑ i ∈ Finset.univ \ ({P.e1, P.ex, P.ey, P.ew} : Finset (BUnit m)),
+          c i • beval i
+      = (cdZero : CD m) := by
+  rw [cd_sum_mul_left, cd_sum_mul_right, ← Finset.sum_add_distrib]
+  refine Finset.sum_eq_zero (fun i hi => ?_)
+  obtain ⟨hi1, -, hiy, -⟩ := quad_gate P.e1 P.ex P.ey P.ew i (Finset.mem_sdiff.mp hi).2
+  rw [smul_mul_left', smul_mul_right', ← smul_add'',
+    fresh_anticomm P.y P.e1 P.ey P.byY P.cy P.he1 P.hey i hi1 hiy]
+  exact smul_zero' _
+
+/-- S_y vanishes on L_x of every fresh sum. x sends fresh indices to
+fresh indices up to sign, and each of those anticommutes with y. -/
+theorem ImagPair.fresh_Sy_Lx {m : ℕ} (P : ImagPair m) (c : BUnit m → ℝ) :
+    (P.x * ∑ i ∈ Finset.univ \ ({P.e1, P.ex, P.ey, P.ew} : Finset (BUnit m)),
+        c i • beval i) * P.y
+      + P.y * (P.x * ∑ i ∈ Finset.univ \ ({P.e1, P.ex, P.ey, P.ew} : Finset (BUnit m)),
+          c i • beval i)
+      = (cdZero : CD m) := by
+  have hna : ∀ p q : CD m, neg p + neg q = neg (p + q) :=
+    fun p q => (_root_.neg_add p q).symm
+  rw [cd_sum_mul_right, cd_sum_mul_right, cd_sum_mul_left, ← Finset.sum_add_distrib]
+  refine Finset.sum_eq_zero (fun i hi => ?_)
+  obtain ⟨hi1, hix, hiy, hiw⟩ := quad_gate P.e1 P.ex P.ey P.ew i (Finset.mem_sdiff.mp hi).2
+  obtain ⟨v, hv1, -, hvy, -, hs⟩ :=
+    fresh_mul_left P.x P.y P.w P.e1 P.ex P.ey P.ew P.bx P.cx P.byY P.cy P.bw P.ne P.xy
+      P.he1 P.hex P.hey P.hew i hi1 hix hiy hiw
+  rcases hs with h | h
+  · rw [smul_mul_right', smul_mul_left', smul_mul_right', ← smul_add'', h,
+      fresh_anticomm P.y P.e1 P.ey P.byY P.cy P.he1 P.hey v hv1 hvy]
+    exact smul_zero' _
+  · rw [smul_mul_right', smul_mul_left', smul_mul_right', ← smul_add'', h,
+      neg_mul, mul_neg, hna,
+      fresh_anticomm P.y P.e1 P.ey P.byY P.cy P.he1 P.hey v hv1 hvy, neg_zero]
+    exact smul_zero' _
+
+/-- On the fresh complement, C∘L_x = L_x∘W. -/
+theorem ImagPair.CA_Lx_eq {m : ℕ} (P : ImagPair m) (f : CD m)
+    (hf : Hpart P.e1 P.ex P.ey P.ew f = (cdZero : CD m)) :
+    CA P.x P.y (P.x * f) = P.x * (WA P.x P.y) f := by
+  have hart : ∀ t : CD m, P.x * (P.x * t) = neg t := by
+    intro t
+    rw [P.artLx t, P.sqx, neg_one_mul]
+  have hfresh := P.eq_fresh_sum f hf
+  have hS0 : f * P.y + P.y * f = (cdZero : CD m) := by
+    rw [hfresh]
+    exact P.fresh_Sy fun i => (bevalBasis m).repr f i
+  have hS1 : (P.x * f) * P.y + P.y * (P.x * f) = (cdZero : CD m) := by
+    rw [hfresh]
+    exact P.fresh_Sy_Lx fun i => (bevalBasis m).repr f i
+  have ebar : conj P.x * (P.x * f) = f := by
+    rw [P.cx, neg_mul, hart f, neg_neg]
+  have eS0 : P.y * f = neg (f * P.y) := by
+    rw [add_comm] at hS0
+    exact eq_neg_of_add_eq_zero_left hS0
+  have eS1 : P.y * (P.x * f) = neg ((P.x * f) * P.y) := by
+    rw [add_comm] at hS1
+    exact eq_neg_of_add_eq_zero_left hS1
+  have hL : CA P.x P.y (P.x * f) = neg (f * P.y) + P.x * ((P.x * f) * P.y) := by
+    rw [CA_apply, ebar, P.cx, neg_mul, eS1, mul_neg, neg_neg, eS0]
+  have hR : P.x * (WA P.x P.y) f = neg (f * P.y) + P.x * ((P.x * f) * P.y) := by
+    have hWA : (WA P.x P.y) f = (P.x * f) * P.y + P.x * (f * P.y) := rfl
+    rw [hWA, mul_add', hart (f * P.y), add_comm]
+  rw [hL, hR]
+
+/-- The four H-coordinates, as one linear map into `ℝ × ℝ × ℝ × ℝ`. -/
+noncomputable def ImagPair.hCoeffs {m : ℕ} (P : ImagPair m) :
+    CD m →ₗ[ℝ] ℝ × ℝ × ℝ × ℝ :=
+  LinearMap.prod (coordLm P.e1)
+    (LinearMap.prod (coordLm P.ex)
+      (LinearMap.prod (coordLm P.ey) (coordLm P.ew)))
+
+/-- The linear combination those four coordinates name. -/
+noncomputable def ImagPair.coeffTo {m : ℕ} (P : ImagPair m) :
+    ℝ × ℝ × ℝ × ℝ →ₗ[ℝ] CD m :=
+  LinearMap.coprod (LinearMap.toSpanSingleton ℝ (CD m) (beval P.e1))
+    (LinearMap.coprod (LinearMap.toSpanSingleton ℝ (CD m) (beval P.ex))
+      (LinearMap.coprod (LinearMap.toSpanSingleton ℝ (CD m) (beval P.ey))
+        (LinearMap.toSpanSingleton ℝ (CD m) (beval P.ew))))
+
+theorem ImagPair.CA_e1 {m : ℕ} (P : ImagPair m) :
+    CA P.x P.y (beval P.e1) = (cdZero : CD m) := by
+  rw [CA_apply, P.he1]
+  exact C_ker_one P.x P.y P.cx (basisUnit_anticomm P.bx P.byY P.cx P.cy P.ne)
+
+theorem ImagPair.CA_ex {m : ℕ} (P : ImagPair m) :
+    CA P.x P.y (beval P.ex) = (cdZero : CD m) := by
+  rw [CA_apply, P.hex]
+  exact C_ker_x P.x P.y P.cx P.sqx (basisUnit_anticomm P.bx P.byY P.cx P.cy P.ne)
+    (fun t => P.artLx t)
+
+theorem ImagPair.CA_ey {m : ℕ} (P : ImagPair m) :
+    CA P.x P.y (beval P.ey) = (cdZero : CD m) := by
+  rw [CA_apply, P.hey]
+  exact C_ker_y P.x P.y P.cx P.sqy P.hyxy (fun t => P.artRy t)
+
+theorem ImagPair.CA_exy {m : ℕ} (P : ImagPair m) :
+    CA P.x P.y (P.x * P.y) = (cdZero : CD m) := by
+  rw [CA_apply]
+  exact C_ker_xy P.x P.y P.cx P.sqx P.sqy P.hyxy (fun t => P.artLx t) (fun t => P.artRy t)
+
+theorem ImagPair.CA_ew {m : ℕ} (P : ImagPair m) :
+    CA P.x P.y (beval P.ew) = (cdZero : CD m) := by
+  rcases P.xy with hc | hc
+  · rw [P.hew, ← hc]
+    exact P.CA_exy
+  · rw [P.hew, P.w_of_neg hc]
+    have hneg : CA P.x P.y (neg (P.x * P.y)) = neg (CA P.x P.y (P.x * P.y)) :=
+      map_neg (CA P.x P.y) (P.x * P.y)
+    rw [hneg, P.CA_exy]
+    exact neg_zero
+
+theorem ImagPair.CA_coeff {m : ℕ} (P : ImagPair m) (c : ℝ × ℝ × ℝ × ℝ) :
+    CA P.x P.y (P.coeffTo c) = (cdZero : CD m) := by
+  rcases c with ⟨c1, cx, cy, cw⟩
+  simp only [ImagPair.coeffTo, LinearMap.coprod_apply, LinearMap.toSpanSingleton,
+    LinearMap.smulRight_apply, LinearMap.id_apply, map_add, map_smul,
+    P.CA_e1, P.CA_ex, P.CA_ey, P.CA_ew, smul_zero', zero_add]
+
+/-- Left multiplication by x permutes the H-span, so C still kills it. -/
+theorem ImagPair.CA_Lx_coeff {m : ℕ} (P : ImagPair m) (c : ℝ × ℝ × ℝ × ℝ) :
+    CA P.x P.y (P.x * P.coeffTo c) = (cdZero : CD m) := by
+  rcases c with ⟨c1, cx, cy, cw⟩
+  have hneg : ∀ v : CD m, CA P.x P.y (neg v) = neg (CA P.x P.y v) :=
+    fun v => map_neg (CA P.x P.y) v
+  have h1 : P.x * beval P.e1 = beval P.ex := by rw [P.he1, P.hex, mul_one]
+  have hx : P.x * beval P.ex = neg (beval P.e1) := by rw [P.hex, P.he1, P.sqx]
+  have hy : P.x * beval P.ey = P.x * P.y := by rw [P.hey]
+  have hsum : P.x * P.coeffTo ⟨c1, cx, cy, cw⟩ =
+      c1 • (P.x * beval P.e1) + (cx • (P.x * beval P.ex)
+        + (cy • (P.x * beval P.ey) + cw • (P.x * beval P.ew))) := by
+    simp only [ImagPair.coeffTo, LinearMap.coprod_apply, LinearMap.toSpanSingleton,
+      LinearMap.smulRight_apply, LinearMap.id_apply, mul_add', smul_mul_right']
+  rw [hsum, map_add, map_add, map_add, map_smul, map_smul, map_smul, map_smul, h1, hx, hy]
+  rcases P.xy with hc | hc
+  · have hw : P.x * beval P.ew = neg (beval P.ey) := by
+      rw [P.hew, ← hc, P.artLx P.y, P.sqx, neg_one_mul, P.hey]
+    rw [hw]
+    simp only [hneg, P.CA_e1, P.CA_ex, P.CA_ey, P.CA_exy, neg_zero, smul_zero', zero_add]
+  · have hw : P.x * beval P.ew = beval P.ey := by
+      rw [P.hew, P.w_of_neg hc, mul_neg, P.artLx P.y, P.sqx, neg_one_mul, neg_neg, P.hey]
+    rw [hw]
+    simp only [hneg, P.CA_e1, P.CA_ex, P.CA_ey, P.CA_exy, neg_zero, smul_zero', zero_add]
+
+theorem finrank_R4 : Module.finrank ℝ (ℝ × ℝ × ℝ × ℝ) = 4 := by
+  simp [Module.finrank_prod, Module.finrank_self]
+
+theorem ImagPair.hCoeffs_coeffTo {m : ℕ} (P : ImagPair m) :
+    P.hCoeffs.comp P.coeffTo = LinearMap.id := by
+  apply LinearMap.ext
+  intro c
+  rcases c with ⟨c1, cx, cy, cw⟩
+  have hto : P.coeffTo ⟨c1, cx, cy, cw⟩ =
+      c1 • beval P.e1 + (cx • beval P.ex
+        + (cy • beval P.ey + cw • beval P.ew)) := by
+    simp only [ImagPair.coeffTo, LinearMap.coprod_apply, LinearMap.toSpanSingleton,
+      LinearMap.smulRight_apply, LinearMap.id_apply]
+  have hcoord (j : BUnit m) :
+      coordLm j (P.coeffTo ⟨c1, cx, cy, cw⟩) =
+        c1 * coordLm j (beval P.e1) + (cx * coordLm j (beval P.ex)
+          + (cy * coordLm j (beval P.ey) + cw * coordLm j (beval P.ew))) := by
+    rw [hto, map_add, map_add, map_add, map_smul, map_smul, map_smul, map_smul,
+      smul_eq_mul, smul_eq_mul, smul_eq_mul, smul_eq_mul]
+  simp only [ImagPair.hCoeffs, LinearMap.comp_apply, LinearMap.id_apply,
+    LinearMap.prod_apply, Function.prod_apply]
+  apply Prod.ext
+  · rw [hcoord P.e1, coord_apply, coord_val_ne P.ex P.e1 (Ne.symm P.he1x),
+        coord_val_ne P.ey P.e1 (Ne.symm P.he1y),
+        coord_val_ne P.ew P.e1 (Ne.symm P.he1w), if_pos rfl]
+    ring
+  · apply Prod.ext
+    · rw [hcoord P.ex, coord_val_ne P.e1 P.ex P.he1x, coord_apply,
+          coord_val_ne P.ey P.ex (Ne.symm P.hexy),
+          coord_val_ne P.ew P.ex (Ne.symm P.hexw), if_pos rfl]
+      ring
+    · apply Prod.ext
+      · rw [hcoord P.ey, coord_val_ne P.e1 P.ey P.he1y, coord_val_ne P.ex P.ey P.hexy,
+            coord_apply, coord_val_ne P.ew P.ey (Ne.symm P.heyw), if_pos rfl]
+        ring
+      · rw [hcoord P.ew, coord_val_ne P.e1 P.ew P.he1w, coord_val_ne P.ex P.ew P.hexw,
+            coord_val_ne P.ey P.ew P.heyw, coord_apply, if_pos rfl]
+        ring
+
+theorem ImagPair.hCoeffs_coeffTo_apply {m : ℕ} (P : ImagPair m)
+    (c : ℝ × ℝ × ℝ × ℝ) : P.hCoeffs (P.coeffTo c) = c :=
+  LinearMap.congr_fun P.hCoeffs_coeffTo c
+
+theorem ImagPair.Hpart_eq {m : ℕ} (P : ImagPair m) :
+    Hpart P.e1 P.ex P.ey P.ew = P.coeffTo.comp P.hCoeffs := by
+  apply LinearMap.ext
+  intro a
+  rw [Hpart_apply, LinearMap.comp_apply]
+  simp only [ImagPair.hCoeffs, ImagPair.coeffTo, LinearMap.prod_apply, Function.prod_apply,
+    LinearMap.coprod_apply, LinearMap.toSpanSingleton, LinearMap.smulRight_apply,
+    LinearMap.id_apply]
+
+/-- (c, k) ↦ x·(coeff(c) + k), landing in ker C. -/
+noncomputable def ImagPair.foldSeed {m : ℕ} (P : ImagPair m) :
+    (ℝ × ℝ × ℝ × ℝ) × LinearMap.ker (WA P.x P.y) →ₗ[ℝ] LinearMap.ker (CA P.x P.y) :=
+  LinearMap.codRestrict (LinearMap.ker (CA P.x P.y))
+    ((mulLeft P.x).comp
+      (LinearMap.coprod P.coeffTo (LinearMap.ker (WA P.x P.y)).subtype))
+    (fun p => by
+      rcases p with ⟨c, k⟩
+      have hk : Hpart P.e1 P.ex P.ey P.ew k.1 = (cdZero : CD m) :=
+        P.Hpart_of_ker k.1 k.2
+      have hC1 : CA P.x P.y (P.x * P.coeffTo c) = (cdZero : CD m) := P.CA_Lx_coeff c
+      have hC2 : CA P.x P.y (P.x * k.1) = P.x * (WA P.x P.y) k.1 := P.CA_Lx_eq k.1 hk
+      have hk0 : (WA P.x P.y) k.1 = (cdZero : CD m) := k.2
+      rw [hk0, mul_zero] at hC2
+      have hsplit : P.x * (P.coeffTo c + k.1) = P.x * P.coeffTo c + P.x * k.1 :=
+        mul_add' P.x (P.coeffTo c) k.1
+      show CA P.x P.y (P.x * (P.coeffTo c + k.1)) = (cdZero : CD m)
+      rw [hsplit, map_add, hC1, hC2, add_zero])
+
+theorem ImagPair.foldSeed_injective {m : ℕ} (P : ImagPair m) :
+    Function.Injective (P.foldSeed) := by
+  intro p q hpq
+  rcases p with ⟨c, k⟩
+  rcases q with ⟨c', k'⟩
+  have h := congrArg (fun z : LinearMap.ker (CA P.x P.y) => (z : CD m)) hpq
+  simp only [ImagPair.foldSeed, LinearMap.codRestrict_apply, LinearMap.comp_apply,
+    LinearMap.coprod_apply, Submodule.subtype_apply] at h
+  have hinj := (P.Lx).injective h
+  have hck : Hpart P.e1 P.ex P.ey P.ew k.1 = (cdZero : CD m) := P.Hpart_of_ker k.1 k.2
+  have hck' : Hpart P.e1 P.ex P.ey P.ew k'.1 = (cdZero : CD m) := P.Hpart_of_ker k'.1 k'.2
+  have hHc : Hpart P.e1 P.ex P.ey P.ew (P.coeffTo c) = P.coeffTo c := by
+    rw [P.Hpart_eq, LinearMap.comp_apply, P.hCoeffs_coeffTo_apply]
+  have hHc' : Hpart P.e1 P.ex P.ey P.ew (P.coeffTo c') = P.coeffTo c' := by
+    rw [P.Hpart_eq, LinearMap.comp_apply, P.hCoeffs_coeffTo_apply]
+  have hsum := congrArg (Hpart P.e1 P.ex P.ey P.ew) hinj
+  rw [map_add, map_add, hHc, hHc', hck, hck', add_zero, add_zero] at hsum
+  have hc : c = c' := by
+    have hcc := congrArg P.hCoeffs hsum
+    rw [P.hCoeffs_coeffTo_apply, P.hCoeffs_coeffTo_apply] at hcc
+    exact hcc
+  subst hc
+  exact Prod.ext rfl (Subtype.ext (add_left_cancel' hinj))
+
+theorem WT_dbl {m : ℕ} (x y a₀ a₁ : CD m) :
+    WT x y (dbl a₀ a₁) = dbl ((WA x y) a₀) ((CA x y) a₁) :=
+  W_block x y a₀ a₁
+
+theorem ImagPair.foldSeed_surjective {m : ℕ} (P : ImagPair m) :
+    Function.Surjective (P.foldSeed) := by
+  intro u
+  let a : CD m := P.Lx.symm (u : CD m)
+  let c : ℝ × ℝ × ℝ × ℝ := P.hCoeffs a
+  let f : CD m := a - P.coeffTo c
+  have ha : P.x * a = (u : CD m) := P.Lx.apply_symm_apply (u : CD m)
+  have hHa : Hpart P.e1 P.ex P.ey P.ew a = P.coeffTo c := by
+    rw [P.Hpart_eq, LinearMap.comp_apply]
+  have hHc : Hpart P.e1 P.ex P.ey P.ew (P.coeffTo c) = P.coeffTo c := by
+    rw [P.Hpart_eq, LinearMap.comp_apply, P.hCoeffs_coeffTo_apply]
+  have hfH : Hpart P.e1 P.ex P.ey P.ew f = (cdZero : CD m) := by
+    have hsub : Hpart P.e1 P.ex P.ey P.ew f
+        = Hpart P.e1 P.ex P.ey P.ew a - Hpart P.e1 P.ex P.ey P.ew (P.coeffTo c) :=
+      map_sub (Hpart P.e1 P.ex P.ey P.ew) a (P.coeffTo c)
+    rw [hsub, hHa, hHc, sub_add, add_comm, neg_add_self]
+  have hxf : P.x * f = (u : CD m) + neg (P.x * P.coeffTo c) := by
+    have hf : f = a + neg (P.coeffTo c) := sub_add a (P.coeffTo c)
+    rw [hf, mul_add', ha, mul_neg]
+  have hCu : CA P.x P.y (P.x * f) = (cdZero : CD m) := by
+    have hneg : CA P.x P.y (neg (P.x * P.coeffTo c))
+        = neg (CA P.x P.y (P.x * P.coeffTo c)) :=
+      map_neg (CA P.x P.y) (P.x * P.coeffTo c)
+    have hu0 : CA P.x P.y (u : CD m) = (cdZero : CD m) := u.2
+    rw [hxf, map_add, hneg, P.CA_Lx_coeff c, neg_zero, hu0, zero_add]
+  have hCeq := P.CA_Lx_eq f hfH
+  rw [hCu] at hCeq
+  have hinv : neg P.x * (P.x * (WA P.x P.y) f) = (WA P.x P.y) f := by
+    simpa [LinearMap.comp_apply, mulLeft, LinearMap.id_apply] using
+      LinearMap.congr_fun (basisUnit_mulLeft_left_inv P.bx P.cx) ((WA P.x P.y) f)
+  rw [← hCeq, mul_zero] at hinv
+  have hWf : (WA P.x P.y) f = (cdZero : CD m) := hinv.symm
+  have hrec : P.coeffTo c + f = a := by
+    have hf : f = a + neg (P.coeffTo c) := sub_add a (P.coeffTo c)
+    rw [hf, add_comm (P.coeffTo c), add_assoc, neg_add_self, add_zero]
+  refine ⟨(c, ⟨f, hWf⟩), ?_⟩
+  apply Subtype.ext
+  show P.x * (P.coeffTo c + f) = (u : CD m)
+  rw [hrec, ha]
+
+theorem ImagPair.finrank_ker_CA {m : ℕ} (P : ImagPair m) :
+    Module.finrank ℝ (LinearMap.ker (CA P.x P.y))
+      = 4 + Module.finrank ℝ (LinearMap.ker (WA P.x P.y)) := by
+  let e := LinearEquiv.ofBijective P.foldSeed
+    ⟨P.foldSeed_injective, P.foldSeed_surjective⟩
+  have h := e.finrank_eq
+  rw [Module.finrank_prod, finrank_R4] at h
+  exact h.symm
+
+theorem finrank_ker_CA {m : ℕ} (x y : CD m)
+    (hbx : BasisUnit x) (hcx : conj x = neg x)
+    (hby : BasisUnit y) (hcy : conj y = neg y) (hne : x ≠ y) :
+    Module.finrank ℝ (LinearMap.ker (CA x y))
+      = 4 + Module.finrank ℝ (LinearMap.ker (WA x y)) := by
+  obtain ⟨P, rfl, rfl⟩ := ImagPair.exists_eq x y hbx hcx hby hcy hne
+  exact P.finrank_ker_CA
+
+theorem ker_WTP_prod {m : ℕ} (x y : CD m) :
+    LinearMap.ker (WTP x y)
+      = (LinearMap.ker (WA x y)).prod (LinearMap.ker (CA x y)) := by
+  ext p
+  rcases p with ⟨a, b⟩
+  simp only [Submodule.mem_prod, LinearMap.mem_ker]
+  have hblock : WTP x y (a, b) = dbl ((WA x y) a) ((CA x y) b) := by
+    show WT x y (dbl a b) = dbl ((WA x y) a) ((CA x y) b)
+    exact WT_dbl x y a b
+  constructor
+  · intro h
+    rw [hblock] at h
+    have h0 : dbl ((WA x y) a) ((CA x y) b) = dbl (cdZero : CD m) cdZero := h
+    injection h0 with _ h1 h2
+    exact ⟨h1, h2⟩
+  · intro h
+    rw [hblock, h.1, h.2]
+    rfl
+
+/-- Off full alternativity: dim ker W_{m+1} = 2·dim ker W_m + 4,
+for every pair of distinct imaginary basis units. -/
+theorem finrank_ker_WT_fold {m : ℕ} (x y : CD m)
+    (hbx : BasisUnit x) (hcx : conj x = neg x)
+    (hby : BasisUnit y) (hcy : conj y = neg y) (hne : x ≠ y) :
+    Module.finrank ℝ (LinearMap.ker (WT x y))
+      = 2 * Module.finrank ℝ (LinearMap.ker (WA x y)) + 4 := by
+  have hker := ker_WTP_prod x y
+  have h5 : LinearMap.range (WTP x y) = LinearMap.range (WT x y) := by
+    ext v
+    constructor
+    · rintro ⟨p, hp⟩
+      exact ⟨cdPairLm p, hp⟩
+    · rintro ⟨u, hu⟩
+      obtain ⟨p, hp⟩ := cdPairLm_surjective u
+      exact ⟨p, by
+        have hg : WT x y (cdPairLm p) = v := by rw [hp]; exact hu
+        exact hg⟩
+  have h6 := LinearMap.finrank_range_add_finrank_ker (WTP x y)
+  have h7 := LinearMap.finrank_range_add_finrank_ker (WT x y)
+  rw [h5, Module.finrank_prod, finrank_cd] at h6
+  rw [finrank_cd, pow_succ, Nat.mul_two] at h7
+  have hdim : Module.finrank ℝ (LinearMap.ker (WTP x y))
+      = Module.finrank ℝ (LinearMap.ker (WA x y))
+        + Module.finrank ℝ (LinearMap.ker (CA x y)) := by
+    rw [hker, LinearEquiv.finrank_eq
+        (Submodule.prodEquiv (LinearMap.ker (WA x y)) (LinearMap.ker (CA x y))),
+      Module.finrank_prod]
+  have hCA := finrank_ker_CA x y hbx hcx hby hcy hne
+  have hkerEq : Module.finrank ℝ (LinearMap.ker (WT x y))
+      = Module.finrank ℝ (LinearMap.ker (WTP x y)) := by
+    omega
+  rw [hkerEq, hdim, hCA]
+  omega
+
+/-!
 ### Seal (2026-10-01)
 
 The fold-law chain through chain steps (1)-(5) plus the fold law in
@@ -4221,5 +4998,46 @@ dependent type theory (propext, Classical.choice, Quot.sound) -- no
 #print axioms fresh_W_coord_zero
 #print axioms W_coord_split
 #print axioms weak_inclusion
+#print axioms basisUnit_mulLeft_right_inv
+#print axioms basisUnit_mulLeft_left_inv
+#print axioms CA_apply
+#print axioms quad_mem
+#print axioms quad_gate
+#print axioms quad_jor
+#print axioms coordLm_repr
+#print axioms Hpart_apply
+#print axioms Hset_sum_eq
+#print axioms ImagPair.sqx
+#print axioms ImagPair.sqy
+#print axioms ImagPair.artLx
+#print axioms ImagPair.artRy
+#print axioms ImagPair.hyxy
+#print axioms ImagPair.w_of_neg
+#print axioms ImagPair.exists_eq
+#print axioms ImagPair.Hsum_eq_Hpart
+#print axioms ImagPair.eq_fresh_sum
+#print axioms ImagPair.ker_Hcoords
+#print axioms ImagPair.Hpart_of_ker
+#print axioms ImagPair.fresh_Sy
+#print axioms ImagPair.fresh_Sy_Lx
+#print axioms ImagPair.CA_Lx_eq
+#print axioms ImagPair.CA_e1
+#print axioms ImagPair.CA_ex
+#print axioms ImagPair.CA_ey
+#print axioms ImagPair.CA_exy
+#print axioms ImagPair.CA_ew
+#print axioms ImagPair.CA_coeff
+#print axioms ImagPair.CA_Lx_coeff
+#print axioms finrank_R4
+#print axioms ImagPair.hCoeffs_coeffTo
+#print axioms ImagPair.hCoeffs_coeffTo_apply
+#print axioms ImagPair.Hpart_eq
+#print axioms ImagPair.foldSeed_injective
+#print axioms WT_dbl
+#print axioms ImagPair.foldSeed_surjective
+#print axioms ImagPair.finrank_ker_CA
+#print axioms finrank_ker_CA
+#print axioms ker_WTP_prod
+#print axioms finrank_ker_WT_fold
 
 end Foldlaw
