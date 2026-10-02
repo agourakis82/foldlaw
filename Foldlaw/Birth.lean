@@ -1428,6 +1428,36 @@ def birthCount (m v : ℕ) : ℕ :=
 def birthHistogram (m : ℕ) : List (ℕ × ℕ) :=
   (List.range (2 ^ (m - 3))).map fun k => (8 * k + 4, birthCount m (8 * k + 4) / 2)
 
+/-! ## Closed form (signed-digit unwinding of the recursion) — checked by evaluation, NOT a theorem
+
+Read the index of `e_p` as a bit string. Let `J = max(lsb p, lsb q, lsb (p xor q))`
+(lowest set bits). Then `birth p q = 2^(m-1) + T_m` where `T_(J+1) = 2^J − 4` and, for
+`k = J+2, …, m`, `T_k = σ_(k-1) · (2 T_(k-1) + 4)` with `σ_j = +1` if bit `j` of `p xor q`
+is 0 and `−1` otherwise. `closedCheck m` compares this with `birth` on every pair. -/
+
+def toNat : ∀ {m : ℕ}, BUnit m → ℕ
+  | 0, BUnit.real0 => 0
+  | n + 1, BUnit.lower u => toNat u
+  | n + 1, BUnit.upper u => toNat u + 2 ^ n
+
+/-- Index of the lowest set bit (`0` for `0`, by fuel). -/
+def lsb : ℕ → ℕ → ℕ
+  | 0, _ => 0
+  | fuel + 1, p => if p % 2 = 1 ∨ p = 0 then 0 else 1 + lsb fuel (p / 2)
+
+def birthClosed (m p q : ℕ) : ℤ :=
+  let pq := p ^^^ q
+  let J := max (lsb m p) (max (lsb m q) (lsb m pq))
+  let T0 : ℤ := 2 ^ J - 4
+  let T := (List.range (m - (J + 1))).foldl
+    (fun T i => (if (pq >>> (J + 1 + i)) % 2 = 1 then (-1 : ℤ) else 1) * (2 * T + 4)) T0
+  2 ^ (m - 1) + T
+
+def closedCheck (m : ℕ) : Bool :=
+  (Finset.univ : Finset (BUnit m × BUnit m)).filter (fun p =>
+    p.1 ≠ bone m ∧ p.2 ≠ bone m ∧ p.1 ≠ p.2 ∧
+      (birth p.1 p.2 : ℤ) ≠ birthClosed m (toNat p.1) (toNat p.2)) = ∅
+
 /-! ## Seal -/
 
 #print axioms finrank_ker_WA_eq_N
