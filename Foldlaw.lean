@@ -2746,6 +2746,35 @@ theorem smul_zero' {m : ℕ} (r : ℝ) : r • (cdZero : CD m) = cdZero := smul_
 theorem smul_dbl {m : ℕ} (r : ℝ) (x y : CD m) :
     r • (dbl x y : CD (m + 1)) = dbl (r • x) (r • y) := rfl
 
+/-- Instance-level copies of the scalar-passes-through multiplication
+lemmas: they bridge the `cdSmul` lemmas to the `•` notation, by defeq. -/
+theorem smul_mul_left' {m : ℕ} (r : ℝ) (a b : CD m) :
+    (r • a) * b = r • (a * b) := smul_mul_left r a b
+
+theorem smul_mul_right' {m : ℕ} (r : ℝ) (a b : CD m) :
+    a * (r • b) = r • (a * b) := smul_mul_right r a b
+
+theorem smul_add'' {m : ℕ} (r : ℝ) (a b : CD m) :
+    r • (a + b) = r • a + r • b := smul_add' r a b
+
+/-- Finite sums pass through the CD multiplication on the left. -/
+theorem cd_sum_mul_left {m : ℕ} {ι : Type*} [DecidableEq ι] (s : Finset ι)
+    (f : ι → CD m) (y : CD m) :
+    (∑ i ∈ s, f i) * y = ∑ i ∈ s, f i * y := by
+  induction s using Finset.induction_on with
+  | empty => rw [Finset.sum_empty, Finset.sum_empty]; exact zero_mul y
+  | insert a s ha ih =>
+    rw [Finset.sum_insert ha, Finset.sum_insert ha, add_mul', ih]
+
+/-- Finite sums pass through the CD multiplication on the right. -/
+theorem cd_sum_mul_right {m : ℕ} {ι : Type*} [DecidableEq ι] (s : Finset ι)
+    (y : CD m) (f : ι → CD m) :
+    y * (∑ i ∈ s, f i) = ∑ i ∈ s, y * f i := by
+  induction s using Finset.induction_on with
+  | empty => rw [Finset.sum_empty, Finset.sum_empty]; exact mul_zero y
+  | insert a s ha ih =>
+    rw [Finset.sum_insert ha, Finset.sum_insert ha, mul_add', ih]
+
 /-- Doubling into the lower slot, as an additive homomorphism. -/
 def dblLowerHom {m : ℕ} : CD m →+ CD (m + 1) where
   toFun z := dbl z (cdZero : CD m)
@@ -3639,8 +3668,9 @@ multiplication by x (right by y), with only the unit art of x (of y).
 `C_of_W_of_S`: the weak inclusion x·ker W ⊆ ker C follows from W(a) = 0
 plus the two symmetric-part vanishings S_y(a) = a·y + y·a = 0 and
 S_y(x·a) = 0 — verified numerically (0 fails over 930 pairs, 15960 kernel
-generators, `sy_check.cpp`, exact mod-p arithmetic). The remaining Lean
-gap is exactly those two S_y facts, which need the basis expansion.
+generators, `sy_check.cpp`, exact mod-p arithmetic). Those two S_y facts
+are proved by the unit-basis expansion in `weak_inclusion` below (floor
+5), so the weak inclusion is now closed in Lean, not just numerically.
 -/
 
 /-- ker W is stable under L_x, by the left unit art of x alone. -/
@@ -3706,6 +3736,310 @@ theorem C_of_W_of_S {m : ℕ} (x y a : CD m) (hx : conj x = neg x)
   have hWant : x * (y * (x * a)) = y * a := by
     rw [eS1, mul_neg, eH, ← eS0]
   rw [e0, hx, neg_mul, hWant, add_neg_self]
+
+/-!
+### Floor 5, step C2: the weak inclusion, closed
+
+`weak_inclusion`: for two DISTINCT imaginary units x, y, if x·a lies in
+the kernel of the anti-associator W(u) = (x·u)·y + x·(u·y), then x·a
+lies in the kernel of C(u) = y·(x̄·u) + x̄·(y·u). The two symmetric parts
+that `C_of_W_of_S` leaves open are now supplied: expand a against the
+basis of units; the four distinguished coefficients of {1, x, y, w = x·y}
+die by reading W through the coordinates — W sends 1 ↦ 2w, x ↦ −2y,
+y ↦ −2x, and w ↦ ±2, so the diagonal system is ±2·(coefficient) = 0 —
+and on the fresh complement both S-parts vanish term by term, by the
+anticommutator gate plus the ±-stability of x·(fresh) and (fresh)·y.
+This closes the last Lean gap of the T12 chain: the weak inclusion now
+holds for every pair of distinct imaginary units at every level.
+-/
+
+theorem weak_inclusion {m : ℕ} (x y a : CD m)
+    (hbx : BasisUnit x) (hcx : conj x = neg x)
+    (hby : BasisUnit y) (hcy : conj y = neg y) (hne : x ≠ y)
+    (hW : (x * a) * y + x * (a * y) = (cdZero : CD m)) :
+    y * (conj x * (x * a)) + conj x * (y * (x * a)) = (cdZero : CD m) := by
+  -- Unit arts and square laws (a unit is either 1 or imaginary-square-−1).
+  obtain ⟨hpx, hartLx, -⟩ := basisUnit_pack hbx
+  rcases hpx with hreal | ⟨-, hx2⟩
+  · rw [hreal] at hcx
+    rw [conj_one] at hcx
+    exact absurd hcx cdOne_ne_neg_one
+  obtain ⟨hpy, -, hartRy⟩ := basisUnit_pack hby
+  rcases hpy with hreal | ⟨-, hy2⟩
+  · rw [hreal] at hcy
+    rw [conj_one] at hcy
+    exact absurd hcy cdOne_ne_neg_one
+  -- The product unit w = ±x·y and the sign-splitting identities.
+  obtain ⟨w, hbw, hcw, hwne_x, hwne_y, hxyw⟩ :=
+    basisUnit_mul_distinct hbx hby hcx hcy hne
+  have hyxy : y * (x * y) = neg ((x * y) * y) := by
+    rcases hxyw with hc | hc
+    · rw [hc]
+      exact basisUnit_anticomm hbw hby hcw hcy hwne_y
+    · rw [hc, mul_neg, neg_mul, neg_neg,
+        basisUnit_anticomm hbw hby hcw hcy hwne_y, neg_neg]
+  have hwxy_neg : x * y = neg w → w = neg (x * y) := by
+    intro hc
+    have h2 := congrArg neg hc
+    rw [neg_neg] at h2
+    exact h2.symm
+  -- Indices for 1, x, y, w in the unit basis.
+  obtain ⟨e1, he1⟩ := basisUnit_beval (basisUnit_cdOne m)
+  obtain ⟨ex, hex⟩ := basisUnit_beval hbx
+  obtain ⟨ey, hey⟩ := basisUnit_beval hby
+  obtain ⟨ew, hew⟩ := basisUnit_beval hbw
+  -- Index distinctness.
+  have hCD1 : ∀ z : CD m, conj z = neg z → z ≠ (cdOne : CD m) := by
+    intro z hz hz1
+    rw [hz1] at hz
+    rw [conj_one] at hz
+    exact cdOne_ne_neg_one hz
+  have hdv : ∀ p q : CD m, conj p = neg p → conj q = neg q → p ≠ q →
+      ∀ u v : BUnit m, beval u = p → beval v = q → u ≠ v := by
+    intro p q hp hq hpq u v hu hv h
+    apply hpq
+    rw [← hu, ← hv, h]
+  have he1x : e1 ≠ ex := fun h => hCD1 x hcx (by rw [← hex, ← he1, h])
+  have he1y : e1 ≠ ey := fun h => hCD1 y hcy (by rw [← hey, ← he1, h])
+  have he1w : e1 ≠ ew := fun h => hCD1 w hcw (by rw [← hew, ← he1, h])
+  have hexy : ex ≠ ey := hdv x y hcx hcy hne ex ey hex hey
+  have hexw : ex ≠ ew := hdv x w hcx hcw (Ne.symm hwne_x) ex ew hex hew
+  have heyw : ey ≠ ew := hdv y w hcy hcw (Ne.symm hwne_y) ey ew hey hew
+  have hd1 : e1 ∉ ({ex, ey, ew} : Finset (BUnit m)) := by
+    intro h
+    rcases Finset.mem_insert.mp h with h' | h'
+    · exact he1x h'
+    · rcases Finset.mem_insert.mp h' with h' | h'
+      · exact he1y h'
+      · exact he1w (Finset.mem_singleton.mp h')
+  have hd2 : ex ∉ ({ey, ew} : Finset (BUnit m)) := by
+    intro h
+    rcases Finset.mem_insert.mp h with h' | h'
+    · exact hexy h'
+    · exact hexw (Finset.mem_singleton.mp h')
+  have hd3 : ey ∉ ({ew} : Finset (BUnit m)) :=
+    fun h => heyw (Finset.mem_singleton.mp h)
+  -- Freshness gates, reusable across the four coordinate readings.
+  have hjor : ∀ j : BUnit m, j ∈ ({e1, ex, ey, ew} : Finset (BUnit m)) →
+      j = e1 ∨ j = ex ∨ j = ey ∨ j = ew := by
+    intro j hj
+    rcases Finset.mem_insert.mp hj with h | h
+    · exact Or.inl h
+    · rcases Finset.mem_insert.mp h with h | h
+      · exact Or.inr (Or.inl h)
+      · rcases Finset.mem_insert.mp h with h | h
+        · exact Or.inr (Or.inr (Or.inl h))
+        · exact Or.inr (Or.inr (Or.inr (Finset.mem_singleton.mp h)))
+  have hmem : ∀ j : BUnit m, j = e1 ∨ j = ex ∨ j = ey ∨ j = ew →
+      j ∈ ({e1, ex, ey, ew} : Finset (BUnit m)) := by
+    intro j hj
+    rcases hj with rfl | rfl | rfl | rfl <;> simp
+  have hgate : ∀ i : BUnit m, i ∉ ({e1, ex, ey, ew} : Finset (BUnit m)) →
+      i ≠ e1 ∧ i ≠ ex ∧ i ≠ ey ∧ i ≠ ew := by
+    intro i hi
+    exact ⟨fun h => hi (hmem i (Or.inl h)),
+      fun h => hi (hmem i (Or.inr (Or.inl h))),
+      fun h => hi (hmem i (Or.inr (Or.inr (Or.inl h)))),
+      fun h => hi (hmem i (Or.inr (Or.inr (Or.inr h))))⟩
+  have hfresh : ∀ (i : BUnit m),
+      i ∈ Finset.univ \ ({e1, ex, ey, ew} : Finset (BUnit m)) →
+      ∀ j : BUnit m, j ∈ ({e1, ex, ey, ew} : Finset (BUnit m)) →
+      coordLm j ((WA x y) (beval i)) = 0 := by
+    intro i hi j hj
+    obtain ⟨hi1, hix, hiy, hiw⟩ := hgate i (Finset.mem_sdiff.mp hi).2
+    exact fresh_W_coord_zero x y w e1 ex ey ew hbx hcx hby hcy hbw hne hxyw
+      he1 hex hey hew i hi1 hix hiy hiw j (hjor j hj)
+  have hjew : ew ∈ ({e1, ex, ey, ew} : Finset (BUnit m)) :=
+    hmem ew (Or.inr (Or.inr (Or.inr rfl)))
+  have hjey : ey ∈ ({e1, ex, ey, ew} : Finset (BUnit m)) :=
+    hmem ey (Or.inr (Or.inr (Or.inl rfl)))
+  have hjex : ex ∈ ({e1, ex, ey, ew} : Finset (BUnit m)) :=
+    hmem ex (Or.inr (Or.inl rfl))
+  have hje1 : e1 ∈ ({e1, ex, ey, ew} : Finset (BUnit m)) :=
+    hmem e1 (Or.inl rfl)
+  -- W on the distinguished vectors, and the auxiliary sign-negations.
+  have hW1 : (WA x y) ((cdOne : CD m)) = x * y + x * y := W_val_one x y
+  have hWx : (WA x y) x = neg y + neg y := W_val_x x y hx2 hartLx
+  have hWy : (WA x y) y = neg x + neg x := W_val_y x y hy2 hartRy
+  have hWxy : (WA x y) (x * y) = cdOne + cdOne :=
+    W_val_xy x y hx2 hy2 hyxy hartLx hartRy
+  have hWneg : ∀ t : CD m, (WA x y) (neg t) = neg ((WA x y) t) :=
+    fun t => map_neg (WA x y) t
+  have hna : ∀ p q : CD m, neg p + neg q = neg (p + q) :=
+    fun p q => (_root_.neg_add p q).symm
+  -- Coordinate basics.
+  have hce1 : coordLm e1 (beval e1) = 1 := by rw [coord_apply]; exact if_pos rfl
+  have hcex : coordLm ex (beval ex) = 1 := by rw [coord_apply]; exact if_pos rfl
+  have hcey : coordLm ey (beval ey) = 1 := by rw [coord_apply]; exact if_pos rfl
+  have hcew : coordLm ew (beval ew) = 1 := by rw [coord_apply]; exact if_pos rfl
+  -- Reading 1 (j = ew): kills the 1-coordinate of a.
+  have hWa : (WA x y) a = (cdZero : CD m) := hW
+  have h0ew : coordLm ew ((WA x y) a) = 0 := by
+    rw [hWa]
+    exact map_zero (coordLm ew)
+  rw [W_coord_split x y e1 ex ey ew a hd1 hd2 hd3 ew
+      (fun i hi => hfresh i hi ew hjew)] at h0ew
+  obtain ⟨sew, hsew, pew1⟩ : ∃ s : ℝ, s ≠ 0 ∧
+      coordLm ew ((WA x y) (beval e1)) = s := by
+    rcases hxyw with hc | hc
+    · refine ⟨2, by norm_num, ?_⟩
+      rw [he1, hW1, map_add, hc, ← hew, hcew]
+      norm_num
+    · refine ⟨-2, by norm_num, ?_⟩
+      rw [he1, hW1, map_add, hc, coord_neg, ← hew, hcew]
+      norm_num
+  have pewx : coordLm ew ((WA x y) (beval ex)) = 0 := by
+    rw [hex, hWx, map_add, coord_neg, ← hey, coord_val_ne ey ew heyw]
+    norm_num
+  have pewy : coordLm ew ((WA x y) (beval ey)) = 0 := by
+    rw [hey, hWy, map_add, coord_neg, ← hex, coord_val_ne ex ew hexw]
+    norm_num
+  have peww : coordLm ew ((WA x y) (beval ew)) = 0 := by
+    rcases hxyw with hc | hc
+    · rw [hew, ← hc, hWxy, ← he1, map_add, coord_val_ne e1 ew he1w]
+      norm_num
+    · rw [hew, hwxy_neg hc, hWneg, hWxy, coord_neg, ← he1, map_add,
+        coord_val_ne e1 ew he1w]
+      norm_num
+  rw [pew1, pewx, pewy, peww] at h0ew
+  simp only [MulZeroClass.mul_zero, AddZeroClass.add_zero] at h0ew
+  have ce1z : (bevalBasis m).repr a e1 = 0 :=
+    (mul_eq_zero.mp h0ew).resolve_right hsew
+  -- Reading 2 (j = ey): kills the x-coordinate of a.
+  have h0ey : coordLm ey ((WA x y) a) = 0 := by
+    rw [hWa]
+    exact map_zero (coordLm ey)
+  rw [W_coord_split x y e1 ex ey ew a hd1 hd2 hd3 ey
+      (fun i hi => hfresh i hi ey hjey)] at h0ey
+  have pey1 : coordLm ey ((WA x y) (beval e1)) = 0 := by
+    rw [he1, hW1, map_add]
+    rcases hxyw with hc | hc
+    · rw [hc, ← hew, coord_val_ne ew ey (Ne.symm heyw)]
+      norm_num
+    · rw [hc, coord_neg, ← hew, coord_val_ne ew ey (Ne.symm heyw)]
+      norm_num
+  have peyx : coordLm ey ((WA x y) (beval ex)) = -2 := by
+    rw [hex, hWx, map_add, coord_neg, ← hey, hcey]
+    norm_num
+  have peyy : coordLm ey ((WA x y) (beval ey)) = 0 := by
+    rw [hey, hWy, map_add, coord_neg, ← hex, coord_val_ne ex ey hexy]
+    norm_num
+  have peyw : coordLm ey ((WA x y) (beval ew)) = 0 := by
+    rcases hxyw with hc | hc
+    · rw [hew, ← hc, hWxy, ← he1, map_add, coord_val_ne e1 ey he1y]
+      norm_num
+    · rw [hew, hwxy_neg hc, hWneg, hWxy, coord_neg, ← he1, map_add,
+        coord_val_ne e1 ey he1y]
+      norm_num
+  rw [pey1, peyx, peyy, peyw] at h0ey
+  simp only [MulZeroClass.mul_zero, AddZeroClass.add_zero, AddZeroClass.zero_add] at h0ey
+  have cexz : (bevalBasis m).repr a ex = 0 :=
+    (mul_eq_zero.mp h0ey).resolve_right (by norm_num)
+  -- Reading 3 (j = ex): kills the y-coordinate of a.
+  have h0ex : coordLm ex ((WA x y) a) = 0 := by
+    rw [hWa]
+    exact map_zero (coordLm ex)
+  rw [W_coord_split x y e1 ex ey ew a hd1 hd2 hd3 ex
+      (fun i hi => hfresh i hi ex hjex)] at h0ex
+  have pex1 : coordLm ex ((WA x y) (beval e1)) = 0 := by
+    rw [he1, hW1, map_add]
+    rcases hxyw with hc | hc
+    · rw [hc, ← hew, coord_val_ne ew ex (Ne.symm hexw)]
+      norm_num
+    · rw [hc, coord_neg, ← hew, coord_val_ne ew ex (Ne.symm hexw)]
+      norm_num
+  have pexx : coordLm ex ((WA x y) (beval ex)) = 0 := by
+    rw [hex, hWx, map_add, coord_neg, ← hey, coord_val_ne ey ex (Ne.symm hexy)]
+    norm_num
+  have pexy : coordLm ex ((WA x y) (beval ey)) = -2 := by
+    rw [hey, hWy, map_add, coord_neg, ← hex, hcex]
+    norm_num
+  have pexw : coordLm ex ((WA x y) (beval ew)) = 0 := by
+    rcases hxyw with hc | hc
+    · rw [hew, ← hc, hWxy, ← he1, map_add, coord_val_ne e1 ex he1x]
+      norm_num
+    · rw [hew, hwxy_neg hc, hWneg, hWxy, coord_neg, ← he1, map_add,
+        coord_val_ne e1 ex he1x]
+      norm_num
+  rw [pex1, pexx, pexy, pexw] at h0ex
+  simp only [MulZeroClass.mul_zero, AddZeroClass.add_zero, AddZeroClass.zero_add] at h0ex
+  have ceyz : (bevalBasis m).repr a ey = 0 :=
+    (mul_eq_zero.mp h0ex).resolve_right (by norm_num)
+  -- Reading 4 (j = e1): kills the w-coordinate of a.
+  have h0e1 : coordLm e1 ((WA x y) a) = 0 := by
+    rw [hWa]
+    exact map_zero (coordLm e1)
+  rw [W_coord_split x y e1 ex ey ew a hd1 hd2 hd3 e1
+      (fun i hi => hfresh i hi e1 hje1)] at h0e1
+  have pe11 : coordLm e1 ((WA x y) (beval e1)) = 0 := by
+    rw [he1, hW1, map_add]
+    rcases hxyw with hc | hc
+    · rw [hc, ← hew, coord_val_ne ew e1 (Ne.symm he1w)]
+      norm_num
+    · rw [hc, coord_neg, ← hew, coord_val_ne ew e1 (Ne.symm he1w)]
+      norm_num
+  have pe1x : coordLm e1 ((WA x y) (beval ex)) = 0 := by
+    rw [hex, hWx, map_add, coord_neg, ← hey, coord_val_ne ey e1 (Ne.symm he1y)]
+    norm_num
+  have pe1y : coordLm e1 ((WA x y) (beval ey)) = 0 := by
+    rw [hey, hWy, map_add, coord_neg, ← hex, coord_val_ne ex e1 (Ne.symm he1x)]
+    norm_num
+  obtain ⟨se1, hse1, pe1w⟩ : ∃ s : ℝ, s ≠ 0 ∧
+      coordLm e1 ((WA x y) (beval ew)) = s := by
+    rcases hxyw with hc | hc
+    · refine ⟨2, by norm_num, ?_⟩
+      rw [hew, ← hc, hWxy, ← he1, map_add, hce1]
+      norm_num
+    · refine ⟨-2, by norm_num, ?_⟩
+      rw [hew, hwxy_neg hc, hWneg, hWxy, coord_neg, ← he1, map_add, hce1]
+      norm_num
+  rw [pe11, pe1x, pe1y, pe1w] at h0e1
+  simp only [MulZeroClass.mul_zero, AddZeroClass.add_zero, AddZeroClass.zero_add] at h0e1
+  have cewz : (bevalBasis m).repr a ew = 0 :=
+    (mul_eq_zero.mp h0e1).resolve_right hse1
+  -- a has no distinguished component; a lives in the fresh complement.
+  have hH0 : ∑ i ∈ ({e1, ex, ey, ew} : Finset (BUnit m)),
+      (bevalBasis m).repr a i • beval i = (cdZero : CD m) := by
+    refine Finset.sum_eq_zero (fun i hi => ?_)
+    rcases Finset.mem_insert.mp hi with h | h
+    · rw [h, ce1z, _root_.zero_smul]
+    · rcases Finset.mem_insert.mp h with h | h
+      · rw [h, cexz, _root_.zero_smul]
+      · rcases Finset.mem_insert.mp h with h | h
+        · rw [h, ceyz, _root_.zero_smul]
+        · rw [Finset.mem_singleton.mp h, cewz, _root_.zero_smul]
+  have ha' : a = ∑ i ∈ (Finset.univ \ ({e1, ex, ey, ew} : Finset (BUnit m))),
+      (bevalBasis m).repr a i • beval i := by
+    conv_lhs => rw [a_decomp e1 ex ey ew a]
+    rw [hH0, zero_add]
+  -- S_y(a) = 0: fresh units are y-perp by the anticommutator.
+  have hS0 : a * y + y * a = (cdZero : CD m) := by
+    rw [ha', cd_sum_mul_left _ _ y, cd_sum_mul_right _ y,
+      ← Finset.sum_add_distrib]
+    refine Finset.sum_eq_zero (fun i hi => ?_)
+    obtain ⟨hi1, hix, hiy, hiw⟩ := hgate i (Finset.mem_sdiff.mp hi).2
+    rw [smul_mul_left', smul_mul_right', ← smul_add'',
+      fresh_anticomm y e1 ey hby hcy he1 hey i hi1 hiy]
+    exact smul_zero' _
+  -- S_y(x·a) = 0: x sends fresh indices to fresh units (±), and each
+  -- fresh unit is y-perp.
+  have hS1 : (x * a) * y + y * (x * a) = (cdZero : CD m) := by
+    rw [ha', cd_sum_mul_right _ x, cd_sum_mul_right _ y,
+      cd_sum_mul_left _ _ y, ← Finset.sum_add_distrib]
+    refine Finset.sum_eq_zero (fun i hi => ?_)
+    obtain ⟨hi1, hix, hiy, hiw⟩ := hgate i (Finset.mem_sdiff.mp hi).2
+    obtain ⟨v, hv1, hvx, hvy, hvw, hs⟩ :=
+      fresh_mul_left x y w e1 ex ey ew hbx hcx hby hcy hbw hne hxyw
+        he1 hex hey hew i hi1 hix hiy hiw
+    rcases hs with h | h
+    · rw [smul_mul_right', smul_mul_left', smul_mul_right', ← smul_add'', h,
+        fresh_anticomm y e1 ey hby hcy he1 hey v hv1 hvy]
+      exact smul_zero' _
+    · rw [smul_mul_right', smul_mul_left', smul_mul_right', ← smul_add'', h,
+        neg_mul, mul_neg, hna,
+        fresh_anticomm y e1 ey hby hcy he1 hey v hv1 hvy, neg_zero]
+      exact smul_zero' _
+  exact C_of_W_of_S x y a hcx hx2 hartLx hW hS0 hS1
 
 /-!
 ### Seal (2026-10-01)
@@ -3886,5 +4220,6 @@ dependent type theory (propext, Classical.choice, Quot.sound) -- no
 #print axioms coord_neg
 #print axioms fresh_W_coord_zero
 #print axioms W_coord_split
+#print axioms weak_inclusion
 
 end Foldlaw
