@@ -2610,6 +2610,118 @@ theorem basisUnit_yw {m : ℕ} {x y w : CD m}
     · rw [mul_neg] at h2
       exact Or.inl (neg_inj h2)
 
+/-!
+### Basis infrastructure, floor 4: the data layer
+
+`BasisUnit` is a proposition; linear combinations need an index that
+carries data. `BUnit` mirrors it as a Type, `beval` evaluates it into
+the tower, and the two are tight: every basis unit is hit
+(`basisUnit_beval`) and `beval` is injective (`beval_inj`), so the
+family has no repeats. The successor level splits as lower ⊕ upper
+(`bUnitSuccEquiv`), which makes the family finite with exactly 2^m
+members (`bUnit_card`) — the spine the linear layer (independence,
+basis, H^⊥ spans) will hang from.
+-/
+
+/-- Data-level index for the standard basis of the tower. -/
+inductive BUnit : ℕ → Type
+  | real0 : BUnit 0
+  | lower {m : ℕ} (u : BUnit m) : BUnit (m + 1)
+  | upper {m : ℕ} (u : BUnit m) : BUnit (m + 1)
+
+/-- The evaluation of a data unit: the corresponding tower element. -/
+def beval : ∀ {m : ℕ}, BUnit m → CD m
+  | 0, BUnit.real0 => cdOne
+  | m + 1, BUnit.lower u => dbl (beval u) (cdZero : CD m)
+  | m + 1, BUnit.upper u => dbl (cdZero : CD m) (beval u)
+
+/-- Every data unit evaluates to a basis unit. -/
+theorem beval_basis {m : ℕ} (u : BUnit m) : BasisUnit (beval u) := by
+  induction u with
+  | real0 => exact basisUnit_cdOne 0
+  | @lower n v ih => exact BasisUnit.lower ih
+  | @upper n v ih => exact BasisUnit.upper ih
+
+/-- `beval` is injective: distinct data units give distinct elements. -/
+theorem beval_inj : ∀ (m : ℕ) (u v : BUnit m), beval u = beval v → u = v := by
+  intro m
+  induction m with
+  | zero =>
+    intro u v h
+    cases u with
+    | real0 =>
+      cases v with
+      | real0 => rfl
+  | succ n ih =>
+    intro u v h
+    cases u with
+    | lower u' =>
+      cases v with
+      | lower v' =>
+        have h' : dbl (beval u') (cdZero : CD n) = dbl (beval v') (cdZero : CD n) := h
+        injection h' with hidx h1 h2
+        exact congrArg BUnit.lower (ih u' v' h1)
+      | upper v' =>
+        have h' : dbl (beval u') (cdZero : CD n)
+            = dbl (cdZero : CD n) (beval v') := h
+        exact absurd h' (lower_ne_upper (basisUnit_ne_zero (beval_basis u'))
+          (basisUnit_ne_zero (beval_basis v')))
+    | upper u' =>
+      cases v with
+      | lower v' =>
+        have h' : dbl (cdZero : CD n) (beval u')
+            = dbl (beval v') (cdZero : CD n) := h
+        exact absurd h' (Ne.symm (lower_ne_upper (basisUnit_ne_zero (beval_basis v'))
+          (basisUnit_ne_zero (beval_basis u'))))
+      | upper v' =>
+        have h' : dbl (cdZero : CD n) (beval u') = dbl (cdZero : CD n) (beval v') := h
+        injection h' with hidx h1 h2
+        exact congrArg BUnit.upper (ih u' v' h2)
+
+/-- Every basis unit is hit by a data unit. -/
+theorem basisUnit_beval {m : ℕ} {x : CD m} (hx : BasisUnit x) :
+    ∃ u : BUnit m, beval u = x := by
+  induction hx with
+  | real0 => exact ⟨BUnit.real0, rfl⟩
+  | @lower n v hv ih =>
+    obtain ⟨u, hu⟩ := ih
+    refine ⟨BUnit.lower u, ?_⟩
+    show dbl (beval u) (cdZero : CD n) = dbl v (cdZero : CD n)
+    exact congrArg (fun z => dbl z (cdZero : CD n)) hu
+  | @upper n v hv ih =>
+    obtain ⟨u, hu⟩ := ih
+    refine ⟨BUnit.upper u, ?_⟩
+    show dbl (cdZero : CD n) (beval u) = dbl (cdZero : CD n) v
+    exact congrArg (fun z => dbl (cdZero : CD n) z) hu
+
+/-- The successor level splits as the lower and upper copies. -/
+def bUnitSuccEquiv (m : ℕ) : BUnit (m + 1) ≃ BUnit m ⊕ BUnit m where
+  toFun i :=
+    match i with
+    | BUnit.lower u => Sum.inl u
+    | BUnit.upper u => Sum.inr u
+  invFun s :=
+    match s with
+    | Sum.inl u => BUnit.lower u
+    | Sum.inr u => BUnit.upper u
+  left_inv i := by cases i <;> rfl
+  right_inv s := by cases s <;> rfl
+
+instance bUnitFintype (m : ℕ) : Fintype (BUnit m) := by
+  induction m with
+  | zero =>
+    exact ⟨{BUnit.real0}, by intro u; cases u; simp⟩
+  | succ n ih =>
+    exact Fintype.ofEquiv (BUnit n ⊕ BUnit n) (bUnitSuccEquiv n).symm
+
+/-- The family has exactly 2^m members. -/
+theorem bUnit_card (m : ℕ) : Fintype.card (BUnit m) = 2 ^ m := by
+  induction m with
+  | zero => decide
+  | succ n ih =>
+    rw [Fintype.card_congr (bUnitSuccEquiv n), Fintype.card_sum, ih,
+      ← Nat.mul_two, ← pow_succ]
+
 /-- Embed a unit one level up, in the lower slot: the doubling that builds
 the centre family (i, j) at every height. -/
 def embed1 {m : ℕ} (x : CD m) : CD (m + 1) := dbl x (cdZero : CD m)
@@ -3187,5 +3299,9 @@ dependent type theory (propext, Classical.choice, Quot.sound) -- no
 #print axioms basisUnit_xw
 #print axioms basisUnit_wy
 #print axioms basisUnit_yw
+#print axioms beval_basis
+#print axioms beval_inj
+#print axioms basisUnit_beval
+#print axioms bUnit_card
 
 end Foldlaw
