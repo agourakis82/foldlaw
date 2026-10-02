@@ -1800,6 +1800,1112 @@ theorem finrank_ker_WT_sedenion :
   decide
 
 /-!
+### Basis units: left and right art at every level
+
+Full left alternativity dies at the sedenions, and it dies in exactly one
+lemma of the chain: `art_left_lin`, which polarises the art onto the sum
+x + y. A single basis unit never needs that. Every standard basis element
+is built by doubling a lower basis element into the lower or the upper
+slot, and both the left art x(xw) = (xx)w and the right art (wx)x = w(xx)
+pass to the next level using only the two arts of that one lower unit.
+The real unit is 1; every other basis unit is imaginary, with square −1.
+-/
+
+/-- Standard basis of the Cayley–Dickson tower. `real0` is 1 at level 0;
+`lower` embeds a basis unit as (u, 0); `upper` embeds it as (0, u). -/
+inductive BasisUnit : {m : ℕ} → CD m → Prop
+  | real0 : BasisUnit (cdOne : CD 0)
+  | lower {m : ℕ} {u : CD m} (hu : BasisUnit u) :
+      BasisUnit (dbl u (cdZero : CD m))
+  | upper {m : ℕ} {u : CD m} (hu : BasisUnit u) :
+      BasisUnit (dbl (cdZero : CD m) u)
+
+theorem basisUnit_cdOne (m : ℕ) : BasisUnit (cdOne : CD m) := by
+  induction m with
+  | zero => exact BasisUnit.real0
+  | succ _ ih => exact BasisUnit.lower ih
+
+/-- The pack carried by every basis unit: it is 1, or it is imaginary of
+square −1; and it is left-alternative and right-alternative on the whole
+algebra of its level. -/
+theorem basisUnit_pack {m : ℕ} {x : CD m} (hx : BasisUnit x) :
+    (x = (cdOne : CD m) ∨ (conj x = neg x ∧ x * x = neg (cdOne : CD m))) ∧
+    (∀ w : CD m, x * (x * w) = (x * x) * w) ∧
+    (∀ w : CD m, (w * x) * x = w * (x * x)) := by
+  induction hx with
+  | real0 =>
+    refine ⟨Or.inl rfl, ?_, ?_⟩
+    · intro w
+      cases w with
+      | zero r =>
+        show zero (1 * (1 * r)) = zero ((1 * 1) * r)
+        exact congrArg zero (by ring)
+    · intro w
+      cases w with
+      | zero r =>
+        show zero ((r * 1) * 1) = zero (r * (1 * 1))
+        exact congrArg zero (by ring)
+  | @lower m u hu ih =>
+    obtain ⟨hkind, ihL, ihR⟩ := ih
+    rcases hkind with h1 | hIm
+    · subst h1
+      refine ⟨Or.inl rfl, ?_, ?_⟩
+      · intro w
+        change (cdOne : CD (m + 1)) * ((cdOne : CD (m + 1)) * w)
+          = ((cdOne : CD (m + 1)) * (cdOne : CD (m + 1))) * w
+        rw [one_mul, one_mul, one_mul, one_mul]
+      · intro w
+        change (w * (cdOne : CD (m + 1))) * (cdOne : CD (m + 1))
+          = w * ((cdOne : CD (m + 1)) * (cdOne : CD (m + 1)))
+        rw [mul_one, mul_one, mul_one, mul_one]
+    · obtain ⟨hconj, hsq⟩ := hIm
+      have hconjx : conj (dbl u (cdZero : CD m)) = neg (dbl u (cdZero : CD m)) := by
+        show dbl (conj u) (neg (cdZero : CD m)) = neg (dbl u (cdZero : CD m))
+        rw [hconj, neg_dbl]
+      have hsqx : dbl u (cdZero : CD m) * dbl u (cdZero : CD m)
+          = neg (cdOne : CD (m + 1)) := by
+        show dbl (u * u - (cdZero : CD m) * conj (cdZero : CD m))
+            (conj u * (cdZero : CD m) + u * (cdZero : CD m))
+          = neg (dbl (cdOne : CD m) (cdZero : CD m))
+        rw [zero_mul, sub_zero, mul_zero, mul_zero, add_zero, hsq, neg_dbl, neg_zero]
+      refine ⟨Or.inr ⟨hconjx, hsqx⟩, ?_, ?_⟩
+      · intro w
+        cases w with
+        | dbl a b =>
+          have inner : dbl u (cdZero : CD m) * dbl a b = dbl (u * a) (conj u * b) := by
+            show dbl (u * a - b * conj (cdZero : CD m))
+                (conj u * b + a * (cdZero : CD m))
+              = dbl (u * a) (conj u * b)
+            rw [conj_zero, mul_zero, sub_zero, mul_zero, add_zero]
+          have outer : dbl u (cdZero : CD m) * dbl (u * a) (conj u * b)
+              = dbl (u * (u * a)) (conj u * (conj u * b)) := by
+            show dbl (u * (u * a) - (conj u * b) * conj (cdZero : CD m))
+                (conj u * (conj u * b) + (u * a) * (cdZero : CD m))
+              = dbl (u * (u * a)) (conj u * (conj u * b))
+            rw [conj_zero, mul_zero, sub_zero, mul_zero, add_zero]
+          have rhs : neg (cdOne : CD (m + 1)) * dbl a b = dbl (neg a) (neg b) := by
+            rw [neg_mul, one_mul, neg_dbl]
+          have hc1 : u * (u * a) = neg a := by
+            rw [ihL a, hsq, neg_mul, one_mul]
+          have hc2 : conj u * (conj u * b) = neg b := by
+            rw [hconj, neg_mul, neg_mul, mul_neg, neg_neg, ihL b, hsq, neg_mul, one_mul]
+          rw [inner, outer, hsqx, rhs, hc1, hc2]
+      · intro w
+        cases w with
+        | dbl a b =>
+          have inner : dbl a b * dbl u (cdZero : CD m) = dbl (a * u) (u * b) := by
+            show dbl (a * u - (cdZero : CD m) * conj b) (conj a * (cdZero : CD m) + u * b)
+              = dbl (a * u) (u * b)
+            rw [zero_mul, sub_zero, mul_zero, zero_add]
+          have outer : dbl (a * u) (u * b) * dbl u (cdZero : CD m)
+              = dbl ((a * u) * u) (u * (u * b)) := by
+            show dbl ((a * u) * u - (cdZero : CD m) * conj (u * b))
+                (conj (a * u) * (cdZero : CD m) + u * (u * b))
+              = dbl ((a * u) * u) (u * (u * b))
+            rw [zero_mul, sub_zero, mul_zero, zero_add]
+          have xsq : dbl u (cdZero : CD m) * dbl u (cdZero : CD m)
+              = dbl (u * u) (cdZero : CD m) := by
+            show dbl (u * u - (cdZero : CD m) * conj (cdZero : CD m))
+                (conj u * (cdZero : CD m) + u * (cdZero : CD m))
+              = dbl (u * u) (cdZero : CD m)
+            rw [zero_mul, sub_zero, mul_zero, mul_zero, add_zero]
+          have rhs : dbl a b * dbl (u * u) (cdZero : CD m)
+              = dbl (a * (u * u)) ((u * u) * b) := by
+            show dbl (a * (u * u) - (cdZero : CD m) * conj b)
+                (conj a * (cdZero : CD m) + (u * u) * b)
+              = dbl (a * (u * u)) ((u * u) * b)
+            rw [zero_mul, sub_zero, mul_zero, zero_add]
+          rw [inner, outer, xsq, rhs, ihR a, ihL b]
+  | @upper m u hu ih =>
+    obtain ⟨hkind, ihL, ihR⟩ := ih
+    have hunorm : u * conj u = (cdOne : CD m) := by
+      rcases hkind with h1 | hIm
+      · rw [h1, conj_one, mul_one]
+      · rw [hIm.1, mul_neg, hIm.2, neg_neg]
+    have hconjx : conj (dbl (cdZero : CD m) u) = neg (dbl (cdZero : CD m) u) := by
+      show dbl (conj (cdZero : CD m)) (neg u) = neg (dbl (cdZero : CD m) u)
+      rw [conj_zero, neg_dbl, neg_zero]
+    have hsqx : dbl (cdZero : CD m) u * dbl (cdZero : CD m) u
+        = neg (cdOne : CD (m + 1)) := by
+      show dbl ((cdZero : CD m) * (cdZero : CD m) - u * conj u)
+          (conj (cdZero : CD m) * u + (cdZero : CD m) * u)
+        = neg (dbl (cdOne : CD m) (cdZero : CD m))
+      rw [zero_mul, hunorm, sub_add, zero_add, conj_zero, zero_mul, add_zero,
+        neg_dbl, neg_zero]
+    refine ⟨Or.inr ⟨hconjx, hsqx⟩, ?_, ?_⟩
+    · intro w
+      cases w with
+      | dbl a b =>
+        have inner : dbl (cdZero : CD m) u * dbl a b
+            = dbl (neg (b * conj u)) (a * u) := by
+          show dbl ((cdZero : CD m) * a - b * conj u)
+              (conj (cdZero : CD m) * b + a * u)
+            = dbl (neg (b * conj u)) (a * u)
+          rw [zero_mul, sub_add, zero_add, conj_zero, zero_mul, zero_add]
+        have outer : dbl (cdZero : CD m) u * dbl (neg (b * conj u)) (a * u)
+            = dbl (neg ((a * u) * conj u)) (neg ((b * conj u) * u)) := by
+          show dbl ((cdZero : CD m) * neg (b * conj u) - (a * u) * conj u)
+              (conj (cdZero : CD m) * (a * u) + neg (b * conj u) * u)
+            = dbl (neg ((a * u) * conj u)) (neg ((b * conj u) * u))
+          rw [zero_mul, sub_add, zero_add, conj_zero, zero_mul, zero_add, neg_mul]
+        have rhs : neg (cdOne : CD (m + 1)) * dbl a b = dbl (neg a) (neg b) := by
+          rw [neg_mul, one_mul, neg_dbl]
+        have hc1 : (a * u) * conj u = a := by
+          rcases hkind with h1 | hIm
+          · rw [h1, conj_one, mul_one, mul_one]
+          · rw [hIm.1, mul_neg, ihR a, hIm.2, mul_neg, mul_one, neg_neg]
+        have hc2 : (b * conj u) * u = b := by
+          rcases hkind with h1 | hIm
+          · rw [h1, conj_one, mul_one, mul_one]
+          · rw [hIm.1, mul_neg, neg_mul, ihR b, hIm.2, mul_neg, mul_one, neg_neg]
+        rw [inner, outer, hsqx, rhs, hc1, hc2]
+    · intro w
+      cases w with
+      | dbl a b =>
+        have inner : dbl a b * dbl (cdZero : CD m) u
+            = dbl (neg (u * conj b)) (conj a * u) := by
+          show dbl (a * (cdZero : CD m) - u * conj b)
+              (conj a * u + (cdZero : CD m) * b)
+            = dbl (neg (u * conj b)) (conj a * u)
+          rw [mul_zero, sub_add, zero_add, zero_mul, add_zero]
+        have outer : dbl (neg (u * conj b)) (conj a * u) * dbl (cdZero : CD m) u
+            = dbl (neg (u * (conj u * a))) (neg ((b * conj u) * u)) := by
+          show dbl (neg (u * conj b) * (cdZero : CD m) - u * conj (conj a * u))
+              (conj (neg (u * conj b)) * u + (cdZero : CD m) * (conj a * u))
+            = dbl (neg (u * (conj u * a))) (neg ((b * conj u) * u))
+          rw [mul_zero, sub_add, zero_add, conj_mul, conj_conj, conj_neg, zero_mul,
+            add_zero, conj_mul, conj_conj, neg_mul]
+        have hc1 : u * (conj u * a) = a := by
+          rcases hkind with h1 | hIm
+          · rw [h1, conj_one, one_mul, one_mul]
+          · rw [hIm.1, neg_mul, mul_neg, ihL a, hIm.2, neg_mul, one_mul, neg_neg]
+        have hc2 : (b * conj u) * u = b := by
+          rcases hkind with h1 | hIm
+          · rw [h1, conj_one, mul_one, mul_one]
+          · rw [hIm.1, mul_neg, neg_mul, ihR b, hIm.2, mul_neg, mul_one, neg_neg]
+        rw [inner, outer, hsqx, hc1, hc2, mul_neg, mul_one, neg_dbl]
+
+theorem basisUnit_left_art {m : ℕ} {x : CD m} (hx : BasisUnit x) (w : CD m) :
+    x * (x * w) = (x * x) * w :=
+  (basisUnit_pack hx).2.1 w
+
+theorem basisUnit_right_art {m : ℕ} {x : CD m} (hx : BasisUnit x) (w : CD m) :
+    (w * x) * x = w * (x * x) :=
+  (basisUnit_pack hx).2.2 w
+
+/-!
+### Basis infrastructure, floor 1: signs and anticommutativity
+
+1 is never its own negation; conjugation fixes or negates every basis
+unit; and distinct imaginary basis units anticommute — all by induction
+on the tower, with no coordinates and no alternativity.
+-/
+
+/-- 1 is never its own negation: characteristic zero at every level. -/
+theorem cdOne_ne_neg_one {m : ℕ} : (cdOne : CD m) ≠ neg (cdOne : CD m) := by
+  induction m with
+  | zero =>
+    intro h
+    have h1 : zero (1 : ℝ) = zero (-1 : ℝ) := h
+    injection h1 with h2
+    norm_num at h2
+  | succ n ih =>
+    intro h
+    have h' : dbl (cdOne : CD n) (cdZero : CD n)
+        = dbl (neg (cdOne : CD n)) (neg (cdZero : CD n)) := h
+    injection h' with hidx h1 h2
+    exact ih h1
+
+/-- `cdZero` subtracts as negation (Mathlib's `zero_sub` is about `Zero.zero). -/
+theorem cdZero_sub {m : ℕ} (a : CD m) : (cdZero : CD m) - a = neg a := by
+  rw [sub_add, zero_add]
+
+/-- Conjugation of a lower unit determines the subunit. -/
+theorem conj_lower {n : ℕ} {u : CD n}
+    (h : conj (dbl u (cdZero : CD n)) = neg (dbl u (cdZero : CD n))) :
+    conj u = neg u := by
+  have h' : dbl (conj u) (neg (cdZero : CD n))
+      = dbl (neg u) (neg (cdZero : CD n)) := by
+    rw [← neg_dbl]
+    exact h
+  exact congrArg Prod.fst (congrArg cdUnpair h')
+
+/-- Conjugation fixes or negates every basis unit. -/
+theorem basisUnit_conj {m : ℕ} {x : CD m} (hx : BasisUnit x) :
+    conj x = x ∨ conj x = neg x := by
+  induction hx with
+  | real0 => exact Or.inl conj_one
+  | @lower n u hu ih =>
+    rcases ih with h | h
+    · exact Or.inl (by
+        show dbl (conj u) (neg (cdZero : CD n)) = dbl u (cdZero : CD n)
+        rw [h, neg_zero])
+    · exact Or.inr (by
+        show dbl (conj u) (neg (cdZero : CD n)) = neg (dbl u (cdZero : CD n))
+        rw [h, neg_dbl])
+  | @upper n u hu ih =>
+    exact Or.inr (by
+      show dbl (conj (cdZero : CD n)) (neg u) = neg (dbl (cdZero : CD n) u)
+      rw [conj_zero, neg_dbl, neg_zero])
+
+/-- Distinct imaginary basis units anticommute, at every level. -/
+theorem basisUnit_anticomm {m : ℕ} {x y : CD m} (hx : BasisUnit x) (hy : BasisUnit y)
+    (hImx : conj x = neg x) (hImy : conj y = neg y) (hne : x ≠ y) :
+    y * x = neg (x * y) := by
+  induction hx with
+  | real0 =>
+    rw [conj_one] at hImx
+    exact absurd hImx cdOne_ne_neg_one
+  | @lower n u hu ih =>
+    cases hy with
+    | @lower _ v hv =>
+      have hcu : conj u = neg u := conj_lower hImx
+      have hcv : conj v = neg v := conj_lower hImy
+      have hne_uv : u ≠ v := fun hcon => hne (by rw [hcon])
+      have e : v * u = neg (u * v) := ih hv hcu hcv hne_uv
+      show dbl (v * u - (cdZero : CD n) * conj (cdZero : CD n))
+          (conj v * (cdZero : CD n) + u * (cdZero : CD n))
+        = neg (dbl (u * v - (cdZero : CD n) * conj (cdZero : CD n))
+          (conj u * (cdZero : CD n) + v * (cdZero : CD n)))
+      simp only [zero_mul, sub_zero, mul_zero, add_zero, neg_dbl, neg_zero, e]
+    | @upper _ v hv =>
+      have hcu : conj u = neg u := conj_lower hImx
+      show dbl ((cdZero : CD n) * u - (cdZero : CD n) * conj v)
+          (conj (cdZero : CD n) * (cdZero : CD n) + u * v)
+        = neg (dbl (u * (cdZero : CD n) - v * conj (cdZero : CD n))
+          (conj u * v + (cdZero : CD n) * (cdZero : CD n)))
+      simp only [conj_zero, zero_mul, mul_zero, sub_zero, add_zero, zero_add,
+        neg_dbl, neg_zero, hcu, neg_mul, neg_neg]
+  | @upper n u hu ih =>
+    cases hy with
+    | @lower _ v hv =>
+      have hcv : conj v = neg v := conj_lower hImy
+      show dbl (v * (cdZero : CD n) - u * conj (cdZero : CD n))
+          (conj v * u + (cdZero : CD n) * (cdZero : CD n))
+        = neg (dbl ((cdZero : CD n) * v - (cdZero : CD n) * conj u)
+          (conj (cdZero : CD n) * (cdZero : CD n) + v * u))
+      simp only [conj_zero, zero_mul, mul_zero, sub_zero, add_zero, zero_add,
+        neg_dbl, neg_zero, hcv, neg_mul]
+    | @upper _ v hv =>
+      rcases (basisUnit_pack hu).1 with rfl | ⟨hcu, -⟩
+      · rcases (basisUnit_pack hv).1 with rfl | ⟨hcv, -⟩
+        · simp at hne
+        · show dbl ((cdZero : CD n) * (cdZero : CD n)
+                - (cdOne : CD n) * conj v)
+              (conj (cdZero : CD n) * (cdOne : CD n)
+                + (cdZero : CD n) * v)
+            = neg (dbl ((cdZero : CD n) * (cdZero : CD n)
+                - v * conj (cdOne : CD n))
+              (conj (cdZero : CD n) * v
+                + (cdZero : CD n) * (cdOne : CD n)))
+          simp only [conj_zero, conj_one, zero_mul, mul_zero, one_mul, mul_one,
+            add_zero, neg_dbl, neg_zero, cdZero_sub, neg_neg, hcv]
+      · rcases (basisUnit_pack hv).1 with rfl | ⟨hcv, -⟩
+        · show dbl ((cdZero : CD n) * (cdZero : CD n)
+                - u * conj (cdOne : CD n))
+              (conj (cdZero : CD n) * u
+                + (cdZero : CD n) * (cdOne : CD n))
+            = neg (dbl ((cdZero : CD n) * (cdZero : CD n)
+                - (cdOne : CD n) * conj u)
+              (conj (cdZero : CD n) * (cdOne : CD n)
+                + (cdZero : CD n) * u))
+          simp only [conj_zero, conj_one, zero_mul, mul_zero, one_mul, mul_one,
+            add_zero, neg_dbl, neg_zero, cdZero_sub, neg_neg, hcu]
+        · have hne_uv : u ≠ v := fun hcon => hne (by rw [hcon])
+          have e : v * u = neg (u * v) := ih hv hcu hcv hne_uv
+          show dbl ((cdZero : CD n) * (cdZero : CD n) - u * conj v)
+              (conj (cdZero : CD n) * u
+                + (cdZero : CD n) * v)
+            = neg (dbl ((cdZero : CD n) * (cdZero : CD n) - v * conj u)
+              (conj (cdZero : CD n) * v
+                + (cdZero : CD n) * u))
+          simp only [conj_zero, zero_mul, mul_zero, add_zero,
+            neg_dbl, neg_zero, cdZero_sub, neg_neg, hcu, hcv, mul_neg,
+            e]
+
+/-!
+### Basis infrastructure, floor 2: signed closure
+
+Products of basis units stay basis up to sign. The induction is on the
+level (complete at every rung), since upper-lower products need the full
+level-below hypothesis with the factors swapped.
+-/
+
+/-- Products of basis units stay basis up to sign, by level induction. -/
+theorem basisUnit_mul_closed_aux : ∀ (m : ℕ) (x y : CD m),
+    BasisUnit x → BasisUnit y →
+    ∃ z, BasisUnit z ∧ (x * y = z ∨ x * y = neg z) := by
+  intro m
+  induction m with
+  | zero =>
+    intro x y hx hy
+    cases hx with
+    | real0 =>
+      cases hy with
+      | real0 => exact ⟨cdOne, BasisUnit.real0, Or.inl (mul_one _)⟩
+  | succ n ih =>
+    intro x y hx hy
+    cases hx with
+    | @lower _ u hu =>
+      cases hy with
+      | @lower _ v hv =>
+        have pLL : dbl u (cdZero : CD n) * dbl v (cdZero : CD n)
+            = dbl (u * v) (cdZero : CD n) := by
+          show dbl (u * v - (cdZero : CD n) * conj (cdZero : CD n))
+              (conj u * (cdZero : CD n) + v * (cdZero : CD n))
+            = dbl (u * v) (cdZero : CD n)
+          simp only [zero_mul, sub_zero, mul_zero, add_zero]
+        obtain ⟨w, hw, h | h⟩ := ih u v hu hv
+        · exact ⟨dbl w (cdZero : CD n), BasisUnit.lower hw, Or.inl (by rw [pLL, h])⟩
+        · exact ⟨dbl w (cdZero : CD n), BasisUnit.lower hw,
+            Or.inr (by rw [pLL, h, neg_dbl, neg_zero])⟩
+      | @upper _ v hv =>
+        have pLU : dbl u (cdZero : CD n) * dbl (cdZero : CD n) v
+            = dbl (cdZero : CD n) (conj u * v) := by
+          show dbl (u * (cdZero : CD n) - v * conj (cdZero : CD n))
+              (conj u * v + (cdZero : CD n) * (cdZero : CD n))
+            = dbl (cdZero : CD n) (conj u * v)
+          simp only [mul_zero, conj_zero, sub_zero, add_zero]
+        rcases basisUnit_conj hu with hc | hc
+        · obtain ⟨w, hw, h | h⟩ := ih u v hu hv
+          · exact ⟨dbl (cdZero : CD n) w, BasisUnit.upper hw,
+              Or.inl (by rw [pLU, hc, h])⟩
+          · exact ⟨dbl (cdZero : CD n) w, BasisUnit.upper hw,
+              Or.inr (by rw [pLU, hc, h, neg_dbl, neg_zero])⟩
+        · obtain ⟨w, hw, h | h⟩ := ih u v hu hv
+          · exact ⟨dbl (cdZero : CD n) w, BasisUnit.upper hw,
+              Or.inr (by rw [pLU, hc, neg_mul, h, neg_dbl, neg_zero])⟩
+          · exact ⟨dbl (cdZero : CD n) w, BasisUnit.upper hw,
+              Or.inl (by rw [pLU, hc, neg_mul, h, neg_neg])⟩
+    | @upper _ u hu =>
+      cases hy with
+      | @lower _ v hv =>
+        have pUL : dbl (cdZero : CD n) u * dbl v (cdZero : CD n)
+            = dbl (cdZero : CD n) (v * u) := by
+          show dbl ((cdZero : CD n) * v - (cdZero : CD n) * conj u)
+              (conj (cdZero : CD n) * (cdZero : CD n) + v * u)
+            = dbl (cdZero : CD n) (v * u)
+          simp only [conj_zero, zero_mul, mul_zero, sub_zero, zero_add]
+        obtain ⟨w, hw, h | h⟩ := ih v u hv hu
+        · exact ⟨dbl (cdZero : CD n) w, BasisUnit.upper hw,
+            Or.inl (by rw [pUL, h])⟩
+        · exact ⟨dbl (cdZero : CD n) w, BasisUnit.upper hw,
+            Or.inr (by rw [pUL, h, neg_dbl, neg_zero])⟩
+      | @upper _ v hv =>
+        have pUU : dbl (cdZero : CD n) u * dbl (cdZero : CD n) v
+            = dbl (neg (v * conj u)) (cdZero : CD n) := by
+          show dbl ((cdZero : CD n) * (cdZero : CD n) - v * conj u)
+              (conj (cdZero : CD n) * v
+                + (cdZero : CD n) * u)
+            = dbl (neg (v * conj u)) (cdZero : CD n)
+          simp only [zero_mul, mul_zero, conj_zero, add_zero,
+            cdZero_sub]
+        rcases basisUnit_conj hu with hc | hc
+        · obtain ⟨w, hw, h | h⟩ := ih v u hv hu
+          · exact ⟨dbl w (cdZero : CD n), BasisUnit.lower hw,
+              Or.inr (by rw [pUU, hc, h, neg_dbl, neg_zero])⟩
+          · exact ⟨dbl w (cdZero : CD n), BasisUnit.lower hw,
+              Or.inl (by rw [pUU, hc, h, neg_neg])⟩
+        · obtain ⟨w, hw, h | h⟩ := ih v u hv hu
+          · exact ⟨dbl w (cdZero : CD n), BasisUnit.lower hw,
+              Or.inl (by rw [pUU, hc, mul_neg, neg_neg, h])⟩
+          · exact ⟨dbl w (cdZero : CD n), BasisUnit.lower hw,
+              Or.inr (by rw [pUU, hc, mul_neg, neg_neg, h, neg_dbl, neg_zero])⟩
+
+/-- Products of basis units stay basis up to sign. -/
+theorem basisUnit_mul_closed {m : ℕ} {x y : CD m} (hx : BasisUnit x) (hy : BasisUnit y) :
+    ∃ z, BasisUnit z ∧ (x * y = z ∨ x * y = neg z) :=
+  basisUnit_mul_closed_aux m x y hx hy
+
+/-!
+### Basis infrastructure, floor 3: fresh triple products
+-/
+
+/-- No basis unit is zero. -/
+theorem basisUnit_ne_zero {m : ℕ} {x : CD m} (hx : BasisUnit x) :
+    x ≠ (cdZero : CD m) := by
+  induction hx with
+  | real0 =>
+    intro h
+    have h1 : zero (1 : ℝ) = zero 0 := h
+    injection h1 with h2
+    norm_num at h2
+  | @lower n u hu ih =>
+    intro h
+    have h' : dbl u (cdZero : CD n) = dbl (cdZero : CD n) (cdZero : CD n) := h
+    injection h' with hidx h1 h2
+    exact ih h1
+  | @upper n u hu ih =>
+    intro h
+    have h' : dbl (cdZero : CD n) u = dbl (cdZero : CD n) (cdZero : CD n) := h
+    injection h' with hidx h1 h2
+    exact ih h2
+
+/-- The lower and upper slots never meet. -/
+theorem lower_ne_upper {n : ℕ} {u v : CD n}
+    (h1 : u ≠ (cdZero : CD n)) (h2 : v ≠ (cdZero : CD n)) :
+    dbl u (cdZero : CD n) ≠ dbl (cdZero : CD n) v := by
+  intro hcon
+  have h' : dbl u (cdZero : CD n) = dbl (cdZero : CD n) v := hcon
+  injection h' with hidx e1 e2
+  exact h1 e1
+
+/-- Products of distinct imaginary basis units, by level induction: the
+product lands on a FRESH imaginary basis unit up to sign — never ±1,
+never either factor. -/
+theorem basisUnit_mul_distinct_aux :
+    ∀ (m : ℕ) (u v : CD m), BasisUnit u → BasisUnit v →
+      conj u = neg u → conj v = neg v → u ≠ v →
+      ∃ w, BasisUnit w ∧ conj w = neg w ∧ w ≠ u ∧ w ≠ v ∧
+        (u * v = w ∨ u * v = neg w) := by
+  intro m
+  induction m with
+  | zero =>
+    intro u v hu hv hcu hcv hne
+    cases hu
+    rw [conj_one] at hcu
+    exact absurd hcu cdOne_ne_neg_one
+  | succ n ih =>
+    intro u v hu hv hcu hcv hne
+    cases hu with
+    | @lower _ a ha =>
+      have hca : conj a = neg a := conj_lower hcu
+      cases hv with
+      | @lower _ b hb =>
+        have hcb : conj b = neg b := conj_lower hcv
+        have hab : a ≠ b := fun hcon => hne (by rw [hcon])
+        have pLL : dbl a (cdZero : CD n) * dbl b (cdZero : CD n)
+            = dbl (a * b) (cdZero : CD n) := by
+          show dbl (a * b - (cdZero : CD n) * conj (cdZero : CD n))
+              (conj a * (cdZero : CD n) + b * (cdZero : CD n))
+            = dbl (a * b) (cdZero : CD n)
+          simp only [zero_mul, sub_zero, mul_zero, add_zero]
+        obtain ⟨w, hw, hcw, hwa, hwb, h | h⟩ := ih a b ha hb hca hcb hab
+        · refine ⟨dbl w (cdZero : CD n), BasisUnit.lower hw, ?_, ?_, ?_, Or.inl ?_⟩
+          · show dbl (conj w) (neg (cdZero : CD n)) = neg (dbl w (cdZero : CD n))
+            rw [hcw, neg_dbl]
+          · intro hcon
+            exact hwa (congrArg Prod.fst (congrArg cdUnpair hcon))
+          · intro hcon
+            exact hwb (congrArg Prod.fst (congrArg cdUnpair hcon))
+          · rw [pLL, h]
+        · refine ⟨dbl w (cdZero : CD n), BasisUnit.lower hw, ?_, ?_, ?_, Or.inr ?_⟩
+          · show dbl (conj w) (neg (cdZero : CD n)) = neg (dbl w (cdZero : CD n))
+            rw [hcw, neg_dbl]
+          · intro hcon
+            exact hwa (congrArg Prod.fst (congrArg cdUnpair hcon))
+          · intro hcon
+            exact hwb (congrArg Prod.fst (congrArg cdUnpair hcon))
+          · rw [pLL, h, neg_dbl, neg_zero]
+      | @upper _ b hb =>
+        have pLU : dbl a (cdZero : CD n) * dbl (cdZero : CD n) b
+            = dbl (cdZero : CD n) (conj a * b) := by
+          show dbl (a * (cdZero : CD n) - b * conj (cdZero : CD n))
+              (conj a * b + (cdZero : CD n) * (cdZero : CD n))
+            = dbl (cdZero : CD n) (conj a * b)
+          simp only [mul_zero, conj_zero, zero_mul, sub_self, add_zero]
+        rcases (basisUnit_pack hb).1 with rfl | ⟨hcb, -⟩
+        · refine ⟨dbl (cdZero : CD n) a, BasisUnit.upper ha, ?_, ?_, ?_, Or.inr ?_⟩
+          · show dbl (conj (cdZero : CD n)) (neg a) = neg (dbl (cdZero : CD n) a)
+            rw [conj_zero, neg_dbl, neg_zero]
+          · intro hcon
+            exact (basisUnit_ne_zero ha)
+              (congrArg Prod.fst (congrArg cdUnpair hcon)).symm
+          · intro hcon
+            have e : a = (cdOne : CD n) :=
+              congrArg Prod.snd (congrArg cdUnpair hcon)
+            rw [e, conj_one] at hca
+            exact absurd hca cdOne_ne_neg_one
+          · rw [pLU, mul_one, hca, neg_dbl, neg_zero]
+        · rcases eq_or_ne a b with hab | hab
+          · have hsa : a * a = neg (cdOne : CD n) := by
+              rcases (basisUnit_pack ha).1 with hreal | ⟨-, hs⟩
+              · rw [hreal, conj_one] at hca
+                exact absurd hca cdOne_ne_neg_one
+              · exact hs
+            refine ⟨dbl (cdZero : CD n) (cdOne : CD n),
+              BasisUnit.upper (basisUnit_cdOne n), ?_, ?_, ?_, Or.inl ?_⟩
+            · show dbl (conj (cdZero : CD n)) (neg (cdOne : CD n))
+                = neg (dbl (cdZero : CD n) (cdOne : CD n))
+              rw [conj_zero, neg_dbl, neg_zero]
+            · intro hcon
+              exact (basisUnit_ne_zero ha)
+                (congrArg Prod.fst (congrArg cdUnpair hcon)).symm
+            · intro hcon
+              have e : (cdOne : CD n) = b :=
+                congrArg Prod.snd (congrArg cdUnpair hcon)
+              have ea : a = (cdOne : CD n) := hab.trans e.symm
+              rw [ea, conj_one] at hca
+              exact absurd hca cdOne_ne_neg_one
+            · rw [pLU, ← hab, hca, neg_mul, hsa, neg_neg]
+          · obtain ⟨w, hw, hcw, hwa, hwb, h | h⟩ := ih a b ha hb hca hcb hab
+            · refine ⟨dbl (cdZero : CD n) w, BasisUnit.upper hw, ?_, ?_, ?_, Or.inr ?_⟩
+              · show dbl (conj (cdZero : CD n)) (neg w)
+                  = neg (dbl (cdZero : CD n) w)
+                rw [conj_zero, neg_dbl, neg_zero]
+              · intro hcon
+                exact (basisUnit_ne_zero ha)
+                  (congrArg Prod.fst (congrArg cdUnpair hcon)).symm
+              · intro hcon
+                exact hwb (congrArg Prod.snd (congrArg cdUnpair hcon))
+              · rw [pLU, hca, neg_mul, h, neg_dbl, neg_zero]
+            · refine ⟨dbl (cdZero : CD n) w, BasisUnit.upper hw, ?_, ?_, ?_, Or.inl ?_⟩
+              · show dbl (conj (cdZero : CD n)) (neg w)
+                  = neg (dbl (cdZero : CD n) w)
+                rw [conj_zero, neg_dbl, neg_zero]
+              · intro hcon
+                exact (basisUnit_ne_zero ha)
+                  (congrArg Prod.fst (congrArg cdUnpair hcon)).symm
+              · intro hcon
+                exact hwb (congrArg Prod.snd (congrArg cdUnpair hcon))
+              · rw [pLU, hca, neg_mul, h, neg_neg]
+    | @upper _ a ha =>
+      cases hv with
+      | @lower _ b hb =>
+        have hcb : conj b = neg b := conj_lower hcv
+        have pUL : dbl (cdZero : CD n) a * dbl b (cdZero : CD n)
+            = dbl (cdZero : CD n) (b * a) := by
+          show dbl ((cdZero : CD n) * b - (cdZero : CD n) * conj a)
+              (conj (cdZero : CD n) * (cdZero : CD n) + b * a)
+            = dbl (cdZero : CD n) (b * a)
+          simp only [conj_zero, zero_mul, sub_zero, zero_add]
+        rcases (basisUnit_pack ha).1 with rfl | ⟨hca, hsa⟩
+        · refine ⟨dbl (cdZero : CD n) b, BasisUnit.upper hb, ?_, ?_, ?_, Or.inl ?_⟩
+          · show dbl (conj (cdZero : CD n)) (neg b) = neg (dbl (cdZero : CD n) b)
+            rw [conj_zero, neg_dbl, neg_zero]
+          · intro hcon
+            have e : b = (cdOne : CD n) :=
+              congrArg Prod.snd (congrArg cdUnpair hcon)
+            rw [e, conj_one] at hcb
+            exact absurd hcb cdOne_ne_neg_one
+          · intro hcon
+            exact (basisUnit_ne_zero hb)
+              (congrArg Prod.fst (congrArg cdUnpair hcon)).symm
+          · rw [pUL, mul_one]
+        · rcases eq_or_ne a b with hab | hab
+          · refine ⟨dbl (cdZero : CD n) (cdOne : CD n),
+              BasisUnit.upper (basisUnit_cdOne n), ?_, ?_, ?_, Or.inr ?_⟩
+            · show dbl (conj (cdZero : CD n)) (neg (cdOne : CD n))
+                = neg (dbl (cdZero : CD n) (cdOne : CD n))
+              rw [conj_zero, neg_dbl, neg_zero]
+            · intro hcon
+              have e : (cdOne : CD n) = a :=
+                congrArg Prod.snd (congrArg cdUnpair hcon)
+              rw [← e, conj_one] at hca
+              exact absurd hca cdOne_ne_neg_one
+            · intro hcon
+              exact (basisUnit_ne_zero hb)
+                (congrArg Prod.fst (congrArg cdUnpair hcon)).symm
+            · rw [pUL, ← hab, hsa, neg_dbl, neg_zero]
+          · obtain ⟨w, hw, hcw, hwb, hwa, h | h⟩ := ih b a hb ha hcb hca (Ne.symm hab)
+            · refine ⟨dbl (cdZero : CD n) w, BasisUnit.upper hw, ?_, ?_, ?_, Or.inl ?_⟩
+              · show dbl (conj (cdZero : CD n)) (neg w)
+                  = neg (dbl (cdZero : CD n) w)
+                rw [conj_zero, neg_dbl, neg_zero]
+              · intro hcon
+                exact hwa (congrArg Prod.snd (congrArg cdUnpair hcon))
+              · intro hcon
+                exact (basisUnit_ne_zero hb)
+                  (congrArg Prod.fst (congrArg cdUnpair hcon)).symm
+              · rw [pUL, h]
+            · refine ⟨dbl (cdZero : CD n) w, BasisUnit.upper hw, ?_, ?_, ?_, Or.inr ?_⟩
+              · show dbl (conj (cdZero : CD n)) (neg w)
+                  = neg (dbl (cdZero : CD n) w)
+                rw [conj_zero, neg_dbl, neg_zero]
+              · intro hcon
+                exact hwa (congrArg Prod.snd (congrArg cdUnpair hcon))
+              · intro hcon
+                exact (basisUnit_ne_zero hb)
+                  (congrArg Prod.fst (congrArg cdUnpair hcon)).symm
+              · rw [pUL, h, neg_dbl, neg_zero]
+      | @upper _ b hb =>
+        have hab : a ≠ b := fun hcon => hne (by rw [hcon])
+        have pUU : dbl (cdZero : CD n) a * dbl (cdZero : CD n) b
+            = dbl (neg (b * conj a)) (cdZero : CD n) := by
+          show dbl ((cdZero : CD n) * (cdZero : CD n) - b * conj a)
+              (conj (cdZero : CD n) * b + (cdZero : CD n) * a)
+            = dbl (neg (b * conj a)) (cdZero : CD n)
+          simp only [zero_mul, conj_zero, cdZero_sub, add_zero]
+        rcases (basisUnit_pack ha).1 with rfl | ⟨hca, -⟩
+        · rcases (basisUnit_pack hb).1 with rfl | ⟨hcb, -⟩
+          · exact (hne rfl).elim
+          · refine ⟨dbl b (cdZero : CD n), BasisUnit.lower hb, ?_, ?_, ?_, Or.inr ?_⟩
+            · show dbl (conj b) (neg (cdZero : CD n)) = neg (dbl b (cdZero : CD n))
+              rw [hcb, neg_dbl]
+            · intro hcon
+              exact (basisUnit_ne_zero hb)
+                (congrArg Prod.fst (congrArg cdUnpair hcon))
+            · intro hcon
+              exact (basisUnit_ne_zero hb)
+                (congrArg Prod.fst (congrArg cdUnpair hcon))
+            · rw [pUU, conj_one, mul_one, neg_dbl, neg_zero]
+        · rcases (basisUnit_pack hb).1 with rfl | ⟨hcb, -⟩
+          · refine ⟨dbl a (cdZero : CD n), BasisUnit.lower ha, ?_, ?_, ?_, Or.inl ?_⟩
+            · show dbl (conj a) (neg (cdZero : CD n)) = neg (dbl a (cdZero : CD n))
+              rw [hca, neg_dbl]
+            · intro hcon
+              exact (basisUnit_ne_zero ha)
+                (congrArg Prod.fst (congrArg cdUnpair hcon))
+            · intro hcon
+              exact (basisUnit_ne_zero ha)
+                (congrArg Prod.fst (congrArg cdUnpair hcon))
+            · rw [pUU, one_mul, hca, neg_neg]
+          · obtain ⟨w, hw, hcw, hwb, hwa, h | h⟩ := ih b a hb ha hcb hca (Ne.symm hab)
+            · refine ⟨dbl w (cdZero : CD n), BasisUnit.lower hw, ?_, ?_, ?_, Or.inl ?_⟩
+              · show dbl (conj w) (neg (cdZero : CD n)) = neg (dbl w (cdZero : CD n))
+                rw [hcw, neg_dbl]
+              · intro hcon
+                exact (basisUnit_ne_zero hw)
+                  (congrArg Prod.fst (congrArg cdUnpair hcon))
+              · intro hcon
+                exact (basisUnit_ne_zero hw)
+                  (congrArg Prod.fst (congrArg cdUnpair hcon))
+              · rw [pUU, hca, mul_neg, neg_neg, h]
+            · refine ⟨dbl w (cdZero : CD n), BasisUnit.lower hw, ?_, ?_, ?_, Or.inr ?_⟩
+              · show dbl (conj w) (neg (cdZero : CD n)) = neg (dbl w (cdZero : CD n))
+                rw [hcw, neg_dbl]
+              · intro hcon
+                exact (basisUnit_ne_zero hw)
+                  (congrArg Prod.fst (congrArg cdUnpair hcon))
+              · intro hcon
+                exact (basisUnit_ne_zero hw)
+                  (congrArg Prod.fst (congrArg cdUnpair hcon))
+              · rw [pUU, hca, mul_neg, neg_neg, h, neg_dbl, neg_zero]
+
+/-- Products of distinct imaginary basis units land on a fresh
+imaginary basis unit, up to sign. -/
+theorem basisUnit_mul_distinct {m : ℕ} {u v : CD m}
+    (hu : BasisUnit u) (hv : BasisUnit v)
+    (hcu : conj u = neg u) (hcv : conj v = neg v) (hne : u ≠ v) :
+    ∃ w, BasisUnit w ∧ conj w = neg w ∧ w ≠ u ∧ w ≠ v ∧
+      (u * v = w ∨ u * v = neg w) :=
+  basisUnit_mul_distinct_aux m u v hu hv hcu hcv hne
+
+/-- Embed a unit one level up, in the lower slot: the doubling that builds
+the centre family (i, j) at every height. -/
+def embed1 {m : ℕ} (x : CD m) : CD (m + 1) := dbl x (cdZero : CD m)
+
+def embedN {m : ℕ} (k : ℕ) (x : CD m) : CD (m + k) :=
+  match k with
+  | 0 => x
+  | k + 1 => embed1 (embedN k x)
+
+theorem conj_imag_embed {m : ℕ} (x : CD m) (h : conj x = neg x) :
+    conj (embed1 x) = neg (embed1 x) := by
+  unfold embed1
+  show dbl (conj x) (neg (cdZero : CD m)) = neg (dbl x (cdZero : CD m))
+  rw [h, neg_dbl]
+
+theorem sq_embed {m : ℕ} (x : CD m) (h : x * x = neg (cdOne : CD m)) :
+    embed1 x * embed1 x = neg (cdOne : CD (m + 1)) := by
+  unfold embed1
+  show dbl (x * x - (cdZero : CD m) * conj (cdZero : CD m))
+      (conj x * (cdZero : CD m) + x * (cdZero : CD m))
+    = neg (dbl (cdOne : CD m) (cdZero : CD m))
+  rw [zero_mul, sub_zero, mul_zero, mul_zero, add_zero, h, neg_dbl, neg_zero]
+
+theorem anticomm_embed {m : ℕ} (x y : CD m) (h : y * x = neg (x * y)) :
+    embed1 y * embed1 x = neg (embed1 x * embed1 y) := by
+  unfold embed1
+  show dbl (y * x - (cdZero : CD m) * conj (cdZero : CD m))
+      (conj y * (cdZero : CD m) + x * (cdZero : CD m))
+    = neg (dbl (x * y - (cdZero : CD m) * conj (cdZero : CD m))
+      (conj x * (cdZero : CD m) + y * (cdZero : CD m)))
+  rw [zero_mul, sub_zero, mul_zero, mul_zero, add_zero,
+    sub_zero, mul_zero, mul_zero, add_zero, h, neg_dbl, neg_zero]
+
+theorem hyxy_embed {m : ℕ} (x y : CD m)
+    (h : y * (x * y) = neg ((x * y) * y)) :
+    embed1 y * (embed1 x * embed1 y)
+      = neg ((embed1 x * embed1 y) * embed1 y) := by
+  have hxy : embed1 x * embed1 y = embed1 (x * y) := by
+    unfold embed1
+    show dbl (x * y - (cdZero : CD m) * conj (cdZero : CD m))
+        (conj x * (cdZero : CD m) + y * (cdZero : CD m))
+      = dbl (x * y) (cdZero : CD m)
+    rw [zero_mul, sub_zero, mul_zero, mul_zero, add_zero]
+  rw [hxy]
+  unfold embed1
+  show dbl (y * (x * y) - (cdZero : CD m) * conj (cdZero : CD m))
+      (conj y * (cdZero : CD m) + (x * y) * (cdZero : CD m))
+    = neg (dbl ((x * y) * y - (cdZero : CD m) * conj (cdZero : CD m))
+      (conj (x * y) * (cdZero : CD m) + y * (cdZero : CD m)))
+  rw [zero_mul, sub_zero, mul_zero, mul_zero, add_zero,
+    sub_zero, mul_zero, mul_zero, add_zero, h, neg_dbl, neg_zero]
+
+theorem basisUnit_imagI : BasisUnit imagI :=
+  BasisUnit.upper (basisUnit_cdOne 0)
+
+theorem basisUnit_unitI : BasisUnit unitI :=
+  BasisUnit.lower basisUnit_imagI
+
+theorem basisUnit_unitJ : BasisUnit unitJ :=
+  BasisUnit.upper (basisUnit_cdOne 1)
+
+theorem basisUnit_embed1 {m : ℕ} {x : CD m} (hx : BasisUnit x) :
+    BasisUnit (embed1 x) :=
+  BasisUnit.lower hx
+
+theorem basisUnit_embedN {m : ℕ} (k : ℕ) {x : CD m} (hx : BasisUnit x) :
+    BasisUnit (embedN k x) := by
+  induction k with
+  | zero => exact hx
+  | succ _ ih => exact basisUnit_embed1 ih
+
+/-- The quaternion units (i, j), embedded into every higher level, keep
+the hypotheses of step (3): imaginary, square −1, anticommuting, the
+quaternion relation, and both unit arts. -/
+theorem centre_hyp (k : ℕ) :
+    conj (embedN k unitI) = neg (embedN k unitI) ∧
+    embedN k unitI * embedN k unitI = neg (cdOne : CD (2 + k)) ∧
+    conj (embedN k unitJ) = neg (embedN k unitJ) ∧
+    embedN k unitJ * embedN k unitJ = neg (cdOne : CD (2 + k)) ∧
+    embedN k unitJ * embedN k unitI = neg (embedN k unitI * embedN k unitJ) ∧
+    embedN k unitJ * (embedN k unitI * embedN k unitJ)
+      = neg ((embedN k unitI * embedN k unitJ) * embedN k unitJ) ∧
+    BasisUnit (embedN k unitI) ∧ BasisUnit (embedN k unitJ) := by
+  induction k with
+  | zero =>
+    exact ⟨conj_unitI, unitI_sq, conj_unitJ, unitJ_sq, hxy_units, hyxy_units,
+      basisUnit_unitI, basisUnit_unitJ⟩
+  | succ n ih =>
+    rcases ih with ⟨hx, hx2, hy, hy2, hxy, hyxy, bx, byy⟩
+    exact ⟨conj_imag_embed _ hx, sq_embed _ hx2, conj_imag_embed _ hy, sq_embed _ hy2,
+      anticomm_embed _ _ hxy, hyxy_embed _ _ hyxy,
+      basisUnit_embed1 bx, basisUnit_embed1 byy⟩
+
+/-- **Step (3) for the centre pair, at every level.** H(i, j) sits inside
+ker C after any number of lower embeddings. The art used is the unit art
+of i and of j, which survives the death of alternativity. -/
+theorem C_ker_H_centre (k : ℕ) :
+    let x := embedN k unitI
+    let y := embedN k unitJ
+    y * (conj x * (cdOne : CD (2 + k))) + conj x * (y * (cdOne : CD (2 + k)))
+      = (cdZero : CD (2 + k)) ∧
+    y * (conj x * x) + conj x * (y * x) = (cdZero : CD (2 + k)) ∧
+    y * (conj x * y) + conj x * (y * y) = (cdZero : CD (2 + k)) ∧
+    y * (conj x * (x * y)) + conj x * (y * (x * y)) = (cdZero : CD (2 + k)) := by
+  intro x y
+  rcases centre_hyp k with ⟨hx, hx2, hy, hy2, hxy, hyxy, bx, byy⟩
+  exact ⟨C_ker_one x y hx hxy,
+    C_ker_x x y hx hx2 hxy (basisUnit_left_art bx),
+    C_ker_y x y hx hy2 hyxy (basisUnit_right_art byy),
+    C_ker_xy x y hx hx2 hy2 hyxy (basisUnit_left_art bx) (basisUnit_right_art byy)⟩
+
+/-- **C doubles diagonally.** For imaginary x, y embedded in the lower slot,
+the complementary block of the embedded pair on (u, v) is (C(u), C(v)).
+No alternativity: only conj x = −x and conj y = −y. -/
+theorem C_embed {m : ℕ} (x y u v : CD m) (hx : conj x = neg x) (hy : conj y = neg y) :
+    dbl y (cdZero : CD m) * (conj (dbl x (cdZero : CD m)) * dbl u v)
+      + conj (dbl x (cdZero : CD m)) * (dbl y (cdZero : CD m) * dbl u v)
+    = dbl (y * (conj x * u) + conj x * (y * u))
+        (y * (conj x * v) + conj x * (y * v)) := by
+  have hcx : conj (dbl x (cdZero : CD m)) = dbl (neg x) (cdZero : CD m) := by
+    show dbl (conj x) (neg (cdZero : CD m)) = dbl (neg x) (cdZero : CD m)
+    rw [hx, neg_zero]
+  have h1 : conj (dbl x (cdZero : CD m)) * dbl u v = dbl (neg (x * u)) (x * v) := by
+    rw [hcx]
+    show dbl (neg x * u - v * conj (cdZero : CD m))
+        (conj (neg x) * v + u * (cdZero : CD m))
+      = dbl (neg (x * u)) (x * v)
+    rw [conj_neg, hx, neg_neg, conj_zero, mul_zero, sub_zero, mul_zero, add_zero, neg_mul]
+  have h2 : dbl y (cdZero : CD m) * dbl (neg (x * u)) (x * v)
+      = dbl (neg (y * (x * u))) (neg (y * (x * v))) := by
+    show dbl (y * neg (x * u) - (x * v) * conj (cdZero : CD m))
+        (conj y * (x * v) + neg (x * u) * (cdZero : CD m))
+      = dbl (neg (y * (x * u))) (neg (y * (x * v)))
+    rw [hy, mul_neg, conj_zero, mul_zero, sub_zero, mul_zero, add_zero, neg_mul]
+  have h3 : dbl y (cdZero : CD m) * dbl u v = dbl (y * u) (neg (y * v)) := by
+    show dbl (y * u - v * conj (cdZero : CD m))
+        (conj y * v + u * (cdZero : CD m))
+      = dbl (y * u) (neg (y * v))
+    rw [hy, conj_zero, mul_zero, sub_zero, mul_zero, add_zero, neg_mul]
+  have h4 : conj (dbl x (cdZero : CD m)) * dbl (y * u) (neg (y * v))
+      = dbl (neg (x * (y * u))) (neg (x * (y * v))) := by
+    rw [hcx]
+    show dbl (neg x * (y * u) - neg (y * v) * conj (cdZero : CD m))
+        (conj (neg x) * neg (y * v) + (y * u) * (cdZero : CD m))
+      = dbl (neg (x * (y * u))) (neg (x * (y * v)))
+    rw [conj_neg, hx, neg_neg, conj_zero, mul_zero, sub_zero, mul_zero, add_zero,
+      neg_mul, mul_neg]
+  rw [h1, h3, h2, h4]
+  show dbl (neg (y * (x * u)) + neg (x * (y * u)))
+      (neg (y * (x * v)) + neg (x * (y * v)))
+    = dbl (y * (conj x * u) + conj x * (y * u))
+      (y * (conj x * v) + conj x * (y * v))
+  rw [← neg_add, ← neg_add,
+    ← C_eq_neg_anticommutator x y u hx, ← C_eq_neg_anticommutator x y v hx]
+
+/-- If C vanishes for (x, y), it vanishes for the pair embedded one level up. -/
+theorem C_zero_embed {m : ℕ} (x y : CD m) (hx : conj x = neg x) (hy : conj y = neg y)
+    (hC : ∀ u : CD m, y * (conj x * u) + conj x * (y * u) = (cdZero : CD m))
+    (w : CD (m + 1)) :
+    dbl y (cdZero : CD m) * (conj (dbl x (cdZero : CD m)) * w)
+      + conj (dbl x (cdZero : CD m)) * (dbl y (cdZero : CD m) * w)
+      = (cdZero : CD (m + 1)) := by
+  cases w with
+  | dbl u v =>
+    rw [C_embed x y u v hx hy, hC u, hC v]
+    rfl
+
+/-- **C ≡ 0 for the centre pair at every level.** At the quaternions the
+full art is available, so C vanishes identically; each lower embedding
+preserves that vanishing. -/
+theorem C_zero_centre (k : ℕ) (w : CD (2 + k)) :
+    embedN k unitJ * (conj (embedN k unitI) * w)
+      + conj (embedN k unitI) * (embedN k unitJ * w)
+      = (cdZero : CD (2 + k)) := by
+  induction k with
+  | zero =>
+    exact C_eq_zero unitI unitJ conj_unitI unitI_sq hxy_units art_left_two w
+  | succ n ih =>
+    cases w with
+    | dbl u v =>
+      have hx : conj (embedN n unitI) = neg (embedN n unitI) := (centre_hyp n).1
+      have hy : conj (embedN n unitJ) = neg (embedN n unitJ) := (centre_hyp n).2.2.1
+      unfold embedN embed1
+      rw [C_embed (embedN n unitI) (embedN n unitJ) u v hx hy, ih u, ih v]
+      rfl
+
+/-- Kernel form of the fold once C vanishes: the second block is free. -/
+theorem ker_W_of_C_zero {m : ℕ} (x y a₀ a₁ : CD m)
+    (hC : ∀ u : CD m, y * (conj x * u) + conj x * (y * u) = (cdZero : CD m)) :
+    (dbl x (cdZero : CD m) * dbl a₀ a₁) * dbl y (cdZero : CD m)
+      + dbl x (cdZero : CD m) * (dbl a₀ a₁ * dbl y (cdZero : CD m))
+      = (cdZero : CD (m + 1)) ↔
+    (x * a₀) * y + x * (a₀ * y) = (cdZero : CD m) := by
+  rw [ker_WT_iff]
+  exact ⟨fun h => h.1, fun h => ⟨h, hC a₁⟩⟩
+
+theorem ker_WTP_of_C_zero {m : ℕ} (x y : CD m)
+    (hC : ∀ u : CD m, y * (conj x * u) + conj x * (y * u) = (cdZero : CD m)) :
+    LinearMap.ker (WTP x y)
+      = LinearMap.ker ((WA x y).comp (LinearMap.fst ℝ (CD m) (CD m))) := by
+  ext p
+  constructor
+  · intro h
+    exact LinearMap.mem_ker.mpr
+      ((ker_W_of_C_zero x y p.1 p.2 hC).mp (LinearMap.mem_ker.mp h))
+  · intro h
+    exact LinearMap.mem_ker.mpr
+      ((ker_W_of_C_zero x y p.1 p.2 hC).mpr (LinearMap.mem_ker.mp h))
+
+/-- Numeric fold once C vanishes: dim ker W_{m+1} = dim ker W_m + 2^m. -/
+theorem finrank_ker_of_C_zero {m : ℕ} (x y : CD m)
+    (hC : ∀ u : CD m, y * (conj x * u) + conj x * (y * u) = (cdZero : CD m)) :
+    Module.finrank ℝ (LinearMap.ker (WT x y))
+      = Module.finrank ℝ (LinearMap.ker (WA x y)) + 2 ^ m := by
+  have h1 := ker_WTP_of_C_zero x y hC
+  have h2 : LinearMap.range ((WA x y).comp (LinearMap.fst ℝ (CD m) (CD m)))
+      = LinearMap.range (WA x y) := by
+    ext v
+    constructor
+    · rintro ⟨p, hp⟩
+      exact ⟨p.1, hp⟩
+    · rintro ⟨a, ha⟩
+      exact ⟨(a, (cdZero : CD m)), ha⟩
+  have h3 := LinearMap.finrank_range_add_finrank_ker
+    ((WA x y).comp (LinearMap.fst ℝ (CD m) (CD m)))
+  have h4 := LinearMap.finrank_range_add_finrank_ker (WA x y)
+  rw [h2, Module.finrank_prod, finrank_cd] at h3
+  rw [finrank_cd] at h4
+  have h5 : LinearMap.range (WTP x y) = LinearMap.range (WT x y) := by
+    ext v
+    constructor
+    · rintro ⟨p, hp⟩
+      exact ⟨cdPairLm p, hp⟩
+    · rintro ⟨u, hu⟩
+      obtain ⟨p, hp⟩ := cdPairLm_surjective u
+      exact ⟨p, by
+        have hg : WT x y (cdPairLm p) = v := by rw [hp]; exact hu
+        exact hg⟩
+  have h6 := LinearMap.finrank_range_add_finrank_ker (WTP x y)
+  have h7 := LinearMap.finrank_range_add_finrank_ker (WT x y)
+  rw [h5, Module.finrank_prod, finrank_cd] at h6
+  rw [finrank_cd, pow_succ, Nat.mul_two] at h7
+  rw [h1] at h6
+  omega
+
+/-- **The centre pair attains the maximum at every level.**
+dim ker W(i, j) embedded k times equals 2^{2+k} − 4: 0 in ℍ, 4 in 𝕆,
+12 in the sedenions, 28 at dimension 64, 60 at dimension 128, and so on.
+The quaternion art starts the induction; the embedding lift carries C ≡ 0
+past the death of alternativity. -/
+theorem finrank_ker_centre (k : ℕ) :
+    Module.finrank ℝ (LinearMap.ker (WA (embedN k unitI) (embedN k unitJ)))
+      = 2 ^ (2 + k) - 4 := by
+  induction k with
+  | zero =>
+    have hE := LinearEquiv.finrank_eq
+      (LinearEquiv.ofInjective (WA unitI unitJ) WA_quaternion_injective)
+    have hR := LinearMap.finrank_range_add_finrank_ker (WA unitI unitJ)
+    rw [← hE] at hR
+    have hK : Module.finrank ℝ (LinearMap.ker (WA unitI unitJ)) = 0 := by omega
+    change Module.finrank ℝ (LinearMap.ker (WA unitI unitJ)) = 2 ^ (2 + 0) - 4
+    rw [hK]
+    decide
+  | succ n ih =>
+    have hpow : 2 ^ (2 + n) - 4 + 2 ^ (2 + n) = 2 ^ (2 + (n + 1)) - 4 := by
+      have hle : 4 ≤ 2 ^ (2 + n) := by
+        have h4 : 4 ≤ 2 ^ 2 := by decide
+        exact Nat.le_trans h4 (Nat.pow_le_pow_right (by decide) (Nat.le_add_right 2 n))
+      rw [Nat.add_comm, ← Nat.add_sub_assoc hle, ← Nat.mul_two, ← pow_succ, ← Nat.add_assoc]
+    change Module.finrank ℝ (LinearMap.ker
+        (WA (embed1 (embedN n unitI)) (embed1 (embedN n unitJ))))
+      = 2 ^ (2 + (n + 1)) - 4
+    unfold embed1
+    rw [WA_eq_WT_embed,
+      finrank_ker_of_C_zero (embedN n unitI) (embedN n unitJ) (C_zero_centre n), ih, hpow]
+
+/-!
+### Step (5) for a general pair: W on the quaternion, unit art only
+
+For an imaginary pair the anti-associator sends the quaternion basis to
+twice itself up to sign, and `conj x` preserves its span. No full
+alternativity: only the left art of x, the right art of y, the squares
+x² = y² = −1 and the quaternion relation y(xy) = −((xy)y). This is the
+computation half of the directness H ∩ x·ker W = 0; what remains is the
+linear independence of {1, x, y, xy} and the weak inclusion.
+-/
+
+/-- `conj x` sends 1 to −x. -/
+theorem xbar_stab_one {m : ℕ} (x : CD m) (hx : conj x = neg x) :
+    conj x * (cdOne : CD m) = neg x := by
+  rw [hx, neg_mul, mul_one]
+
+/-- `conj x` sends x to 1. -/
+theorem xbar_stab_x {m : ℕ} (x : CD m) (hx : conj x = neg x)
+    (hx2 : x * x = neg (cdOne : CD m)) :
+    conj x * x = (cdOne : CD m) := by
+  rw [hx, neg_mul, hx2, neg_neg]
+
+/-- `conj x` sends y to −(xy). -/
+theorem xbar_stab_y {m : ℕ} (x y : CD m) (hx : conj x = neg x) :
+    conj x * y = neg (x * y) := by
+  rw [hx, neg_mul]
+
+/-- `conj x` sends xy back to y, by the left unit art of x. -/
+theorem xbar_stab_xy {m : ℕ} (x y : CD m) (hx : conj x = neg x)
+    (hx2 : x * x = neg (cdOne : CD m))
+    (hartLx : ∀ w : CD m, x * (x * w) = (x * x) * w) :
+    conj x * (x * y) = y := by
+  have eL : x * (x * y) = neg y := by rw [hartLx y, hx2, neg_mul, one_mul]
+  rw [hx, neg_mul, eL, neg_neg]
+
+/-- W(1) = 2xy: no art at all, just the unit laws. -/
+theorem W_val_one {m : ℕ} (x y : CD m) :
+    (x * (cdOne : CD m)) * y + x * ((cdOne : CD m) * y)
+      = (x * y) + (x * y) := by
+  rw [mul_one, one_mul]
+
+/-- W(x) = −2y, by the left unit art of x alone. -/
+theorem W_val_x {m : ℕ} (x y : CD m)
+    (hx2 : x * x = neg (cdOne : CD m))
+    (hartLx : ∀ w : CD m, x * (x * w) = (x * x) * w) :
+    (x * x) * y + x * (x * y) = neg y + neg y := by
+  have e : x * (x * y) = neg y := by rw [hartLx y, hx2, neg_mul, one_mul]
+  rw [hx2, neg_mul, one_mul, e]
+
+/-- W(y) = −2x, by the right unit art of y alone. -/
+theorem W_val_y {m : ℕ} (x y : CD m)
+    (hy2 : y * y = neg (cdOne : CD m))
+    (hartRy : ∀ w : CD m, (w * y) * y = w * (y * y)) :
+    (x * y) * y + x * (y * y) = neg x + neg x := by
+  have e1 : x * (y * y) = neg x := by rw [hy2, mul_neg, mul_one]
+  rw [hartRy x, e1]
+
+/-- W(xy) = 2, by the two unit arts plus y(xy) = −((xy)y). -/
+theorem W_val_xy {m : ℕ} (x y : CD m)
+    (hx2 : x * x = neg (cdOne : CD m)) (hy2 : y * y = neg (cdOne : CD m))
+    (hyxy : y * (x * y) = neg ((x * y) * y))
+    (hartLx : ∀ w : CD m, x * (x * w) = (x * x) * w)
+    (hartRy : ∀ w : CD m, (w * y) * y = w * (y * y)) :
+    (x * (x * y)) * y + x * ((x * y) * y)
+      = (cdOne : CD m) + (cdOne : CD m) := by
+  have eL : x * (x * y) = neg y := by rw [hartLx y, hx2, neg_mul, one_mul]
+  have e1 : x * (y * y) = neg x := by rw [hy2, mul_neg, mul_one]
+  have eR : y * (x * y) = x := by rw [hyxy, hartRy x, e1, neg_neg]
+  have h1 : (x * y) * y = neg (y * (x * y)) := by rw [hyxy, neg_neg]
+  have eR' : (x * y) * y = neg x := by rw [h1, eR]
+  rw [eL, eR', neg_mul, mul_neg, hy2, hx2, neg_neg]
+
+/-!
+### ker W is stable under the two units; the weak inclusion, reduced
+
+`W_stable_Lx/Ry`: the kernel of the anti-associator is preserved by left
+multiplication by x (right by y), with only the unit art of x (of y).
+`C_of_W_of_S`: the weak inclusion x·ker W ⊆ ker C follows from W(a) = 0
+plus the two symmetric-part vanishings S_y(a) = a·y + y·a = 0 and
+S_y(x·a) = 0 — verified numerically (0 fails over 930 pairs, 15960 kernel
+generators, `sy_check.cpp`, exact mod-p arithmetic). The remaining Lean
+gap is exactly those two S_y facts, which need the basis expansion.
+-/
+
+/-- ker W is stable under L_x, by the left unit art of x alone. -/
+theorem W_stable_Lx {m : ℕ} (x y a : CD m)
+    (hx2 : x * x = neg (cdOne : CD m))
+    (hartLx : ∀ w : CD m, x * (x * w) = (x * x) * w)
+    (hW : (x * a) * y + x * (a * y) = (cdZero : CD m)) :
+    (x * (x * a)) * y + x * ((x * a) * y) = (cdZero : CD m) := by
+  have e1 : x * (x * a) = neg a := by rw [hartLx a, hx2, neg_mul, one_mul]
+  have eH : x * ((x * a) * y) = a * y := by
+    have h := congrArg (fun z => x * z) hW
+    rw [mul_add', hartLx (a * y), hx2, neg_mul, one_mul, mul_zero] at h
+    have h2 : x * ((x * a) * y) - a * y = (cdZero : CD m) := by
+      rw [sub_add]
+      exact h
+    exact sub_eq_zero h2
+  rw [e1, eH, neg_mul, neg_add_self]
+
+/-- ker W is stable under R_y, by the right unit art of y alone. -/
+theorem W_stable_Ry {m : ℕ} (x y a : CD m)
+    (hy2 : y * y = neg (cdOne : CD m))
+    (hartRy : ∀ w : CD m, (w * y) * y = w * (y * y))
+    (hW : (x * a) * y + x * (a * y) = (cdZero : CD m)) :
+    (x * (a * y)) * y + x * ((a * y) * y) = (cdZero : CD m) := by
+  have e1 : (a * y) * y = neg a := by rw [hartRy a, hy2, mul_neg, mul_one]
+  have eH : (x * (a * y)) * y = x * a := by
+    have h := congrArg (fun z => z * y) hW
+    rw [add_mul', hartRy (x * a), hy2, mul_neg, mul_one, zero_mul] at h
+    rw [add_comm (neg (x * a)) _] at h
+    have h2 : (x * (a * y)) * y - x * a = (cdZero : CD m) := by
+      rw [sub_add]
+      exact h
+    exact sub_eq_zero h2
+  rw [eH, e1, mul_neg, add_neg_self]
+
+/-- Weak inclusion, reduced to the symmetric parts. If W(a) = 0 and both
+a and x·a are y-perp (a·y + y·a = 0), then C(x·a) = 0 — with only the
+left unit art of x. -/
+theorem C_of_W_of_S {m : ℕ} (x y a : CD m) (hx : conj x = neg x)
+    (hx2 : x * x = neg (cdOne : CD m))
+    (hartLx : ∀ w : CD m, x * (x * w) = (x * x) * w)
+    (hW : (x * a) * y + x * (a * y) = (cdZero : CD m))
+    (hS0 : a * y + y * a = (cdZero : CD m))
+    (hS1 : (x * a) * y + y * (x * a) = (cdZero : CD m)) :
+    y * (conj x * (x * a)) + conj x * (y * (x * a)) = (cdZero : CD m) := by
+  have e0 : conj x * (x * a) = a := by
+    rw [hx, neg_mul, hartLx a, hx2, neg_mul, one_mul, neg_neg]
+  have eH : x * ((x * a) * y) = a * y := by
+    have h := congrArg (fun z => x * z) hW
+    rw [mul_add', hartLx (a * y), hx2, neg_mul, one_mul, mul_zero] at h
+    have h2 : x * ((x * a) * y) - a * y = (cdZero : CD m) := by
+      rw [sub_add]
+      exact h
+    exact sub_eq_zero h2
+  have hS0r : y * a + a * y = (cdZero : CD m) := by
+    rw [add_comm (y * a) (a * y)]
+    exact hS0
+  have hS1r : y * (x * a) + (x * a) * y = (cdZero : CD m) := by
+    rw [add_comm (y * (x * a)) ((x * a) * y)]
+    exact hS1
+  have eS0 : y * a = neg (a * y) := eq_neg_of_add_eq_zero_left hS0r
+  have eS1 : y * (x * a) = neg ((x * a) * y) := eq_neg_of_add_eq_zero_left hS1r
+  have hWant : x * (y * (x * a)) = y * a := by
+    rw [eS1, mul_neg, eH, ← eS0]
+  rw [e0, hx, neg_mul, hWant, add_neg_self]
+
+/-!
 ### Seal (2026-10-01)
 
 The fold-law chain through chain steps (1)-(5) plus the fold law in
@@ -1815,8 +2921,7 @@ anchor ker W(i, j) = 0 at the ℍ rung where H(i, j) is all of ℍ; and
 the fold law itself: L_x is surjective constructively (u = x·(x̄u)),
 hence C ≡ 0 identically at art levels, hence ker W_{m+1} = ker W_m ⊕
 (free ℓ-block), anchored at the (i, j)-rung as the 16-census value 4
-and by art at CD 3 as the 32-census value 12 for old pairs. Beyond
-art levels (m ≥ 4) C ≡ 0 is numeric-only (930/930, check F).
+and by art at CD 3 as the 32-census value 12 for old pairs.
 The finrank layer closes the chain as EQUATIONS BETWEEN NUMBERS:
 CD m is a genuine R-module (componentwise scalar recursion, the scalar
 passes through the multiplication on either side), finrank (CD m) = 2^m,
@@ -1824,6 +2929,37 @@ W_A and W_T are linear maps, and rank-nullity turns the kernel
 decomposition into dim ker W_{m+1} = dim ker W_m + 2^m -- anchored at
 dim ker W(i, j)|ℍ = 0, this machine-checks the census values 4 (16) and
 12 (32) as closed numerals, sorry-free.
+Beyond that rung the algebra is not alternative, but every standard basis
+unit still is: `basisUnit_left_art` and `basisUnit_right_art` hold at every
+level, by induction on the basis (the real unit, the lower slot, the upper
+slot). Full alternativity is used only by `art_left_lin`, which polarises
+onto the sum of two units; a single basis unit never needs it. For the
+centre pair (i, j) embedded into every higher level, `C_ker_H_centre`
+puts the whole quaternion H inside ker C, using that unit art.
+For this pair the complementary block vanishes outright, not only on H:
+`C_embed` splits C of a lower embedding into (C(u), C(v)), so the
+quaternion vanishing `C_eq_zero` lifts by induction (`C_zero_centre`)
+past the death of alternativity. With the second block free,
+`finrank_ker_centre` is the maximum at every height:
+dim ker W(embed^k i, embed^k j) = 2^{2+k} − 4
+(0, 4, 12, 28, 60, …). A generic pair is not this pair: off the
+maximum, C does not vanish. Step (5) for a general pair is half done:
+`W_val_one/x/y/xy` send the quaternion basis to twice itself up to sign
+and `xbar_stab_*` keep `conj x` inside its span, all with unit-level art
+only — the computation half of H ∩ x·ker W = 0. ker W is stable under
+L_x and R_y with unit art only (`W_stable_Lx/Ry`), and the weak inclusion
+is reduced to the two symmetric-part vanishings (`C_of_W_of_S`).
+Basis floor 1 is in: `cdOne_ne_neg_one`, `basisUnit_conj`, and distinct
+imaginary basis units anticommuting (`basisUnit_anticomm`), all by
+tower induction with no coordinates. Floor 2 is in: products of basis
+units stay basis up to sign (`basisUnit_mul_closed`, by level induction
+— upper-lower needs the full rung-below hypothesis with swapped
+factors). Floor 3 is in: no basis unit is zero (`basisUnit_ne_zero`),
+lower and upper slots never meet (`lower_ne_upper`), and distinct
+imaginary basis units multiply to a FRESH imaginary basis unit up to
+sign — never ±1, never either factor (`basisUnit_mul_distinct`, level
+induction; the obtain pattern splits the product disjunction into an
+`= w` and an `= −w` branch at the point of destructing).
 `#print axioms` below must show only the three standard axioms of Lean's
 dependent type theory (propext, Classical.choice, Quot.sound) -- no
 `sorryAx`, no hand-added `axiom` decls.
@@ -1875,5 +3011,36 @@ dependent type theory (propext, Classical.choice, Quot.sound) -- no
 #print axioms unitI_sq'
 #print axioms hxy_units'
 #print axioms finrank_ker_WT_sedenion
+#print axioms basisUnit_cdOne
+#print axioms basisUnit_left_art
+#print axioms basisUnit_right_art
+#print axioms centre_hyp
+#print axioms C_ker_H_centre
+#print axioms C_embed
+#print axioms C_zero_centre
+#print axioms finrank_ker_of_C_zero
+#print axioms finrank_ker_centre
+#print axioms xbar_stab_one
+#print axioms xbar_stab_x
+#print axioms xbar_stab_y
+#print axioms xbar_stab_xy
+#print axioms W_val_one
+#print axioms W_val_x
+#print axioms W_val_y
+#print axioms W_val_xy
+#print axioms W_stable_Lx
+#print axioms W_stable_Ry
+#print axioms C_of_W_of_S
+#print axioms cdOne_ne_neg_one
+#print axioms cdZero_sub
+#print axioms basisUnit_conj
+#print axioms conj_lower
+#print axioms basisUnit_anticomm
+#print axioms basisUnit_mul_closed_aux
+#print axioms basisUnit_mul_closed
+#print axioms basisUnit_ne_zero
+#print axioms lower_ne_upper
+#print axioms basisUnit_mul_distinct_aux
+#print axioms basisUnit_mul_distinct
 
 end Foldlaw
