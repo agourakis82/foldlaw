@@ -3094,6 +3094,195 @@ theorem a_decomp {m : ℕ} (e1 ex ey ew : BUnit m) (a : CD m) :
   rw [h1]
   exact hsr.symm
 
+/-!
+### Floor 5, step C1: right-freshness and the coordinate functionals
+
+`fresh_mul_right` mirrors `fresh_mul_left`: y on the right also sends
+fresh indices to fresh indices up to sign. The j-th coordinate is packaged
+as the linear functional `coordLm j`; `fresh_W_coord_zero` says W of a
+fresh unit has no distinguished component, and `W_coord_split` reads
+W(a) through any coordinate j as the four distinguished contributions.
+-/
+
+/-- Gate B': y on the right sends fresh indices to fresh indices, up
+to sign. -/
+theorem fresh_mul_right {m : ℕ} (x y w : CD m) (e1 ex ey ew : BUnit m)
+    (hbx : BasisUnit x) (hcx : conj x = neg x)
+    (hby : BasisUnit y) (hcy : conj y = neg y)
+    (hbw : BasisUnit w) (hne : x ≠ y)
+    (hw : x * y = w ∨ x * y = neg w)
+    (he1 : beval e1 = (cdOne : CD m)) (hex : beval ex = x)
+    (hey : beval ey = y) (hew : beval ew = w)
+    (u : BUnit m)
+    (hu1 : u ≠ e1) (hux : u ≠ ex) (huy : u ≠ ey) (huw : u ≠ ew) :
+    ∃ v : BUnit m, v ≠ e1 ∧ v ≠ ex ∧ v ≠ ey ∧ v ≠ ew ∧
+      ((beval u) * y = beval v ∨ (beval u) * y = neg (beval v)) := by
+  have hbu : BasisUnit (beval u) := beval_basis u
+  have hb1 : beval u ≠ (cdOne : CD m) := by
+    intro hc
+    exact hu1 (beval_inj m u e1 (hc.trans he1.symm))
+  have hcu : conj (beval u) = neg (beval u) := by
+    rcases (basisUnit_pack hbu).1 with hreal | ⟨hc, -⟩
+    · exact absurd hreal hb1
+    · exact hc
+  have hyu : beval u ≠ y := by
+    intro hc
+    exact huy (beval_inj m u ey (hc.trans hey.symm))
+  obtain ⟨w', hw'bu, hcw', hw'u, hw'y, hprod⟩ :=
+    basisUnit_mul_distinct hbu hby hcu hcy hyu
+  obtain ⟨v, hv⟩ := basisUnit_beval hw'bu
+  have hw'1 : w' ≠ (cdOne : CD m) := by
+    intro hcon
+    rw [hcon] at hcw'
+    rw [conj_one] at hcw'
+    exact cdOne_ne_neg_one hcw'
+  refine ⟨v, ?_, ?_, ?_, ?_, ?_⟩
+  · intro hcon
+    exact hw'1 (by rw [← hv, hcon, he1])
+  · intro hcon
+    -- w' = x would force (beval u)·y = ±x, hence beval u = ±w
+    have hxl : w' = x := by rw [← hv, hcon, hex]
+    rw [hxl] at hprod
+    have huw' : beval u = w ∨ beval u = neg w :=
+      basisUnit_cancel_right hby hcy hw hprod
+    rcases huw' with hc | hc
+    · exact huw (beval_inj m u ew (hc.trans hew.symm))
+    · exact basisUnit_neg_not hbu hbw hc
+  · intro hcon
+    exact hw'y (by rw [← hv, hcon, hey])
+  · intro hcon
+    -- w' = w would force (beval u)·y = ±w; multiply by y on the right
+    have hwl : w' = w := by rw [← hv, hcon, hew]
+    rw [hwl] at hprod
+    have hart : (beval u * y) * y = neg (beval u) :=
+      (basisUnit_pack hby).2.2 (beval u) |>.trans
+        (by rw [basisUnit_sq hby hcy, mul_neg_one])
+    have hwy : w * y = x ∨ w * y = neg x := basisUnit_wy hby hcy hw
+    rcases hprod with h1 | h1 <;> rcases hwy with h2 | h2
+    · rw [h1, h2] at hart
+      have hfin := congrArg neg hart
+      rw [neg_neg] at hfin
+      exact basisUnit_neg_not hbu hbx hfin.symm
+    · rw [h1, h2] at hart
+      exact hux (beval_inj m u ex ((neg_inj hart).symm.trans hex.symm))
+    · rw [h1, neg_mul, h2] at hart
+      exact hux (beval_inj m u ex ((neg_inj hart).symm.trans hex.symm))
+    · rw [h1, neg_mul, h2, neg_neg] at hart
+      have hfin := congrArg neg hart
+      rw [neg_neg] at hfin
+      exact basisUnit_neg_not hbu hbx hfin.symm
+  · rw [hv]
+    exact hprod
+
+/-- The j-th coordinate, as a linear functional. -/
+noncomputable def coordLm {m : ℕ} (j : BUnit m) : CD m →ₗ[ℝ] ℝ :=
+  (Finsupp.lapply j).comp ((bevalBasis m).repr.toLinearMap)
+
+/-- The coordinates of a basis unit: 1 at its own index, 0 elsewhere. -/
+theorem coord_apply {m : ℕ} (i j : BUnit m) :
+    coordLm j (beval i) = if i = j then 1 else 0 := by
+  have h1 : coordLm j (beval i)
+      = (Finsupp.lapply j : (BUnit m →₀ ℝ) →ₗ[ℝ] ℝ)
+          ((bevalBasis m).repr (beval i)) := rfl
+  rw [h1, Finsupp.lapply_apply, ← bevalBasis_apply m i]
+  exact (bevalBasis m).repr_self_apply i j
+
+/-- Off-diagonal coordinates vanish. -/
+theorem coord_val_ne {m : ℕ} (i j : BUnit m) (h : i ≠ j) :
+    coordLm j (beval i) = 0 := by
+  rw [coord_apply]
+  split
+  · exact absurd ‹i = j› h
+  · rfl
+
+/-- Coordinates commute with the tower negation. -/
+theorem coord_neg {m : ℕ} (j : BUnit m) (a : CD m) :
+    coordLm j (neg a) = -(coordLm j a) := map_neg _ _
+
+/-- For fresh u, every distinguished coordinate of W(u) vanishes: both
+halves of W(u) are fresh units up to sign. -/
+theorem fresh_W_coord_zero {m : ℕ} (x y w : CD m) (e1 ex ey ew : BUnit m)
+    (hbx : BasisUnit x) (hcx : conj x = neg x)
+    (hby : BasisUnit y) (hcy : conj y = neg y)
+    (hbw : BasisUnit w) (hne : x ≠ y)
+    (hw : x * y = w ∨ x * y = neg w)
+    (he1 : beval e1 = (cdOne : CD m)) (hex : beval ex = x)
+    (hey : beval ey = y) (hew : beval ew = w)
+    (u : BUnit m) (hu1 : u ≠ e1) (hux : u ≠ ex) (huy : u ≠ ey) (huw : u ≠ ew)
+    (j : BUnit m) (hj : j = e1 ∨ j = ex ∨ j = ey ∨ j = ew) :
+    coordLm j (WA x y (beval u)) = 0 := by
+  obtain ⟨v1, h11, h12, h13, h14, hs1⟩ :=
+    fresh_mul_left x y w e1 ex ey ew hbx hcx hby hcy hbw hne hw he1 hex hey hew
+      u hu1 hux huy huw
+  obtain ⟨v2, h21, h22, h23, h24, hs2⟩ :=
+    fresh_mul_right x y w e1 ex ey ew hbx hcx hby hcy hbw hne hw he1 hex hey hew
+      u hu1 hux huy huw
+  have hvj : ∀ v : BUnit m, v ≠ e1 → v ≠ ex → v ≠ ey → v ≠ ew → v ≠ j := by
+    intro v h1 h2 h3 h4
+    rcases hj with rfl | rfl | rfl | rfl
+    · exact h1
+    · exact h2
+    · exact h3
+    · exact h4
+  obtain ⟨p1, q11, q12, q13, q14, hp1⟩ :=
+    fresh_mul_right x y w e1 ex ey ew hbx hcx hby hcy hbw hne hw he1 hex hey hew
+      v1 h11 h12 h13 h14
+  have ht1 : coordLm j ((x * (beval u)) * y) = 0 := by
+    rcases hs1 with h | h <;> rcases hp1 with h' | h'
+    · rw [h, h']
+      exact coord_val_ne p1 j (hvj p1 q11 q12 q13 q14)
+    · rw [h, h', coord_neg, coord_val_ne p1 j (hvj p1 q11 q12 q13 q14),
+        _root_.neg_zero]
+    · rw [h, neg_mul, h', coord_neg, coord_val_ne p1 j (hvj p1 q11 q12 q13 q14),
+        _root_.neg_zero]
+    · rw [h, neg_mul, h', coord_neg, coord_neg, _root_.neg_neg,
+        coord_val_ne p1 j (hvj p1 q11 q12 q13 q14)]
+  obtain ⟨p2, r11, r12, r13, r14, hp2⟩ :=
+    fresh_mul_left x y w e1 ex ey ew hbx hcx hby hcy hbw hne hw he1 hex hey hew
+      v2 h21 h22 h23 h24
+  have ht2 : coordLm j (x * ((beval u) * y)) = 0 := by
+    rcases hs2 with h | h <;> rcases hp2 with h' | h'
+    · rw [h, h']
+      exact coord_val_ne p2 j (hvj p2 r11 r12 r13 r14)
+    · rw [h, h', coord_neg, coord_val_ne p2 j (hvj p2 r11 r12 r13 r14),
+        _root_.neg_zero]
+    · rw [h, mul_neg, h', coord_neg, coord_val_ne p2 j (hvj p2 r11 r12 r13 r14),
+        _root_.neg_zero]
+    · rw [h, mul_neg, h', coord_neg, coord_neg, _root_.neg_neg,
+        coord_val_ne p2 j (hvj p2 r11 r12 r13 r14)]
+  show coordLm j ((x * (beval u)) * y + x * ((beval u) * y)) = 0
+  rw [map_add, ht1, ht2, _root_.add_zero]
+
+/-- Reading W(a) through the j-th coordinate: only the four
+distinguished components survive, with the basis coefficients. -/
+theorem W_coord_split {m : ℕ} (x y : CD m) (e1 ex ey ew : BUnit m) (a : CD m)
+    (hd1 : e1 ∉ ({ex, ey, ew} : Finset (BUnit m)))
+    (hd2 : ex ∉ ({ey, ew} : Finset (BUnit m)))
+    (hd3 : ey ∉ ({ew} : Finset (BUnit m)))
+    (j : BUnit m)
+    (hfresh : ∀ i ∈ (Finset.univ \ ({e1, ex, ey, ew} : Finset (BUnit m))),
+       coordLm j ((WA x y) (beval i)) = 0) :
+    coordLm j ((WA x y) a)
+      = (bevalBasis m).repr a e1 * coordLm j ((WA x y) (beval e1))
+      + (bevalBasis m).repr a ex * coordLm j ((WA x y) (beval ex))
+      + (bevalBasis m).repr a ey * coordLm j ((WA x y) (beval ey))
+      + (bevalBasis m).repr a ew * coordLm j ((WA x y) (beval ew)) := by
+  have ha : a = ∑ i : BUnit m, (bevalBasis m).repr a i • beval i := by
+    have h := (bevalBasis m).sum_repr a
+    simp only [bevalBasis_apply] at h
+    exact h.symm
+  conv_lhs => rw [ha]
+  rw [map_sum (WA x y)]
+  rw [map_sum (coordLm j)]
+  simp only [map_smul]
+  rw [← Finset.sum_sdiff (Finset.subset_univ ({e1, ex, ey, ew} : Finset (BUnit m)))]
+  rw [Finset.sum_eq_zero (fun i hi => by rw [hfresh i hi, _root_.smul_zero])]
+  rw [_root_.zero_add]
+  rw [Finset.sum_insert hd1, Finset.sum_insert hd2, Finset.sum_insert hd3,
+    Finset.sum_singleton]
+  simp only [smul_eq_mul]
+  ring
+
 /-- Embed a unit one level up, in the lower slot: the doubling that builds
 the centre family (i, j) at every height. -/
 def embed1 {m : ℕ} (x : CD m) : CD (m + 1) := dbl x (cdZero : CD m)
@@ -3691,5 +3880,11 @@ dependent type theory (propext, Classical.choice, Quot.sound) -- no
 #print axioms fresh_mul_left
 #print axioms bevalBasis_apply
 #print axioms a_decomp
+#print axioms fresh_mul_right
+#print axioms coord_apply
+#print axioms coord_val_ne
+#print axioms coord_neg
+#print axioms fresh_W_coord_zero
+#print axioms W_coord_split
 
 end Foldlaw
