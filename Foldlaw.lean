@@ -2884,6 +2884,183 @@ noncomputable def bevalBasis (m : ℕ) : Module.Basis (BUnit m) ℝ (CD m) :=
   basisOfLinearIndependentOfCardEqFinrank' (K := ℝ) beval beval_linearIndependent
     (by rw [bUnit_card, finrank_cd])
 
+/-!
+### Floor 5, step A: freshness infrastructure
+
+The H^⊥ machinery needs one more structural fact about the index set:
+no two basis units sit on the same line (`beval_neg_inj`), so an
+imaginary unit and its negative are never both basis units
+(`basisUnit_neg_not`). On top of that, the two gates every fresh unit
+must pass: a fresh unit anticommutes with y (`fresh_anticomm`), and
+x sends fresh indices to fresh indices up to sign (`fresh_mul_left`),
+with the ±w branch closed by cancellation and the line lemma.
+-/
+
+/-- Two basis units never sit on the same line. -/
+theorem beval_neg_inj : ∀ (m : ℕ) (u v : BUnit m),
+    beval u = neg (beval v) → u = v := by
+  intro m
+  induction m with
+  | zero =>
+    intro u v h
+    cases u with
+    | real0 =>
+      cases v with
+      | real0 => exact (cdOne_ne_neg_one h).elim
+  | succ n ih =>
+    intro u v h
+    cases u with
+    | lower u' =>
+      cases v with
+      | lower v' =>
+        have h1 : dbl (beval u') (cdZero : CD n)
+            = neg (dbl (beval v') (cdZero : CD n)) := h
+        rw [neg_dbl, neg_zero] at h1
+        injection h1 with hidx hc1 hc2
+        exact congrArg BUnit.lower (ih u' v' hc1)
+      | upper v' =>
+        have h1 : dbl (beval u') (cdZero : CD n)
+            = neg (dbl (cdZero : CD n) (beval v')) := h
+        rw [neg_dbl, neg_zero] at h1
+        have hneg : neg (beval v') ≠ (cdZero : CD n) := by
+          intro hc
+          have h2 := congrArg neg hc
+          rw [neg_neg, neg_zero] at h2
+          exact basisUnit_ne_zero (beval_basis v') h2
+        exact absurd h1 (lower_ne_upper (basisUnit_ne_zero (beval_basis u')) hneg)
+    | upper u' =>
+      cases v with
+      | lower v' =>
+        have h1 : dbl (cdZero : CD n) (beval u')
+            = neg (dbl (beval v') (cdZero : CD n)) := h
+        rw [neg_dbl, neg_zero] at h1
+        have hneg : neg (beval v') ≠ (cdZero : CD n) := by
+          intro hc
+          have h2 := congrArg neg hc
+          rw [neg_neg, neg_zero] at h2
+          exact basisUnit_ne_zero (beval_basis v') h2
+        exact absurd h1 (Ne.symm (lower_ne_upper hneg
+          (basisUnit_ne_zero (beval_basis u'))))
+      | upper v' =>
+        have h1 : dbl (cdZero : CD n) (beval u')
+            = neg (dbl (cdZero : CD n) (beval v')) := h
+        rw [neg_dbl, neg_zero] at h1
+        injection h1 with hidx hc1 hc2
+        exact congrArg BUnit.upper (ih u' v' hc2)
+
+/-- An imaginary unit and its negative are never both basis units:
+the index set meets each line exactly once. -/
+theorem basisUnit_neg_not {m : ℕ} {z w : CD m}
+    (hz : BasisUnit z) (hw : BasisUnit w) (h : z = -w) : False := by
+  obtain ⟨u, hu⟩ := basisUnit_beval hz
+  obtain ⟨v, hv⟩ := basisUnit_beval hw
+  have hne : beval u = neg (beval v) :=
+    hu.trans (h.trans (congrArg neg hv.symm))
+  have huv : u = v := beval_neg_inj m u v hne
+  have hzw : z = w := by rw [← hu, ← hv, huv]
+  rw [hzw] at h
+  -- now h : w = -w, so 2 • w = 0, and over ℝ this forces w = 0
+  have h9 : w + w = (0 : CD m) := by
+    have h10 : w + w = w + neg w := congrArg (fun t : CD m => w + t) h
+    rw [add_neg_self] at h10
+    exact h10
+  have h11 : (2 : ℝ) • w = (0 : CD m) := by rw [two_smul]; exact h9
+  have h13 : (2⁻¹ : ℝ) • (2 : ℝ) • w = (2⁻¹ : ℝ) • (0 : CD m) :=
+    congrArg ((2⁻¹ : ℝ) • ·) h11
+  rw [_root_.smul_zero, inv_smul_smul₀ two_ne_zero] at h13
+  exact basisUnit_ne_zero hw h13
+
+/-- Gate A: a unit whose value is neither 1 nor y anticommutes
+with y. -/
+theorem fresh_anticomm {m : ℕ} (y : CD m) (e1 ey : BUnit m)
+    (hby : BasisUnit y) (hcy : conj y = neg y)
+    (he1 : beval e1 = (cdOne : CD m)) (hey : beval ey = y)
+    (u : BUnit m) (hu1 : u ≠ e1) (huy : u ≠ ey) :
+    (beval u) * y + y * (beval u) = (cdZero : CD m) := by
+  have hbu : BasisUnit (beval u) := beval_basis u
+  have hb1 : beval u ≠ (cdOne : CD m) := by
+    intro hc
+    exact hu1 (beval_inj m u e1 (hc.trans he1.symm))
+  have hne : beval u ≠ y := by
+    intro hc
+    exact huy (beval_inj m u ey (hc.trans hey.symm))
+  rcases (basisUnit_pack hbu).1 with hreal | ⟨hcu, -⟩
+  · exact absurd hreal hb1
+  · rw [basisUnit_anticomm hbu hby hcu hcy hne, add_neg_self]
+
+/-- Gate B: x sends fresh indices to fresh indices, up to sign. The
+±w branch closes by cancellation; the landed-on-y branch would force
+u = ±w, and both signs die (u = ew excluded; the negative is not a
+unit by the line lemma). -/
+theorem fresh_mul_left {m : ℕ} (x y w : CD m) (e1 ex ey ew : BUnit m)
+    (hbx : BasisUnit x) (hcx : conj x = neg x)
+    (hby : BasisUnit y) (hcy : conj y = neg y)
+    (hbw : BasisUnit w) (hne : x ≠ y)
+    (hw : x * y = w ∨ x * y = neg w)
+    (he1 : beval e1 = (cdOne : CD m)) (hex : beval ex = x)
+    (hey : beval ey = y) (hew : beval ew = w)
+    (u : BUnit m)
+    (hu1 : u ≠ e1) (hux : u ≠ ex) (huy : u ≠ ey) (huw : u ≠ ew) :
+    ∃ v : BUnit m, v ≠ e1 ∧ v ≠ ex ∧ v ≠ ey ∧ v ≠ ew ∧
+      (x * (beval u) = beval v ∨ x * (beval u) = neg (beval v)) := by
+  have hbu : BasisUnit (beval u) := beval_basis u
+  have hb1 : beval u ≠ (cdOne : CD m) := by
+    intro hc
+    exact hu1 (beval_inj m u e1 (hc.trans he1.symm))
+  have hcu : conj (beval u) = neg (beval u) := by
+    rcases (basisUnit_pack hbu).1 with hreal | ⟨hc, -⟩
+    · exact absurd hreal hb1
+    · exact hc
+  have hxbu : x ≠ beval u := by
+    intro hc
+    exact hux (beval_inj m u ex (hc.symm.trans hex.symm))
+  obtain ⟨w', hw'bu, hcw', hw'x, hw'u, hprod⟩ :=
+    basisUnit_mul_distinct hbx hbu hcx hcu hxbu
+  obtain ⟨v, hv⟩ := basisUnit_beval hw'bu
+  -- w' ≠ 1 (it is imaginary), so v ≠ e1
+  have hw'1 : w' ≠ (cdOne : CD m) := by
+    intro hcon
+    rw [hcon] at hcw'
+    rw [conj_one] at hcw'
+    exact cdOne_ne_neg_one hcw'
+  refine ⟨v, ?_, ?_, ?_, ?_, ?_⟩
+  · intro hcon
+    exact hw'1 (by rw [← hv, hcon, he1])
+  · intro hcon
+    exact hw'x (by rw [← hv, hcon, hex])
+  · intro hcon
+    -- w' = y would force x·(beval u) = ±y, hence beval u = ±w
+    have hyl : w' = y := by rw [← hv, hcon, hey]
+    rw [hyl] at hprod
+    have huw' : beval u = w ∨ beval u = neg w :=
+      basisUnit_cancel_left hbx hcx hw hprod
+    rcases huw' with hc | hc
+    · exact huw (beval_inj m u ew (hc.trans hew.symm))
+    · exact basisUnit_neg_not hbu hbw hc
+  · intro hcon
+    -- w' = w would force x·(beval u) = ±w; multiply by x and use x·w = ±y
+    have hwl : w' = w := by rw [← hv, hcon, hew]
+    rw [hwl] at hprod
+    have hart : x * (x * (beval u)) = neg (beval u) :=
+      (basisUnit_pack hbx).2.1 (beval u) |>.trans
+        (by rw [basisUnit_sq hbx hcx, neg_one_mul])
+    have hxwy : x * w = y ∨ x * w = neg y := basisUnit_xw hbx hcx hw
+    rcases hprod with h1 | h1 <;> rcases hxwy with h2 | h2
+    · rw [h1, h2] at hart
+      have hfin := congrArg neg hart
+      rw [neg_neg] at hfin
+      exact basisUnit_neg_not hbu hby hfin.symm
+    · rw [h1, h2] at hart
+      exact huy (beval_inj m u ey ((neg_inj hart).symm.trans hey.symm))
+    · rw [h1, mul_neg, h2] at hart
+      exact huy (beval_inj m u ey ((neg_inj hart).symm.trans hey.symm))
+    · rw [h1, mul_neg, h2, neg_neg] at hart
+      have hfin := congrArg neg hart
+      rw [neg_neg] at hfin
+      exact basisUnit_neg_not hbu hby hfin.symm
+  · rw [hv]
+    exact hprod
+
 /-- Embed a unit one level up, in the lower slot: the doubling that builds
 the centre family (i, j) at every height. -/
 def embed1 {m : ℕ} (x : CD m) : CD (m + 1) := dbl x (cdZero : CD m)
@@ -3475,5 +3652,9 @@ dependent type theory (propext, Classical.choice, Quot.sound) -- no
 #print axioms beval_linearIndependent
 #print axioms cdOne_ne_zero
 #print axioms bevalBasis
+#print axioms beval_neg_inj
+#print axioms basisUnit_neg_not
+#print axioms fresh_anticomm
+#print axioms fresh_mul_left
 
 end Foldlaw
