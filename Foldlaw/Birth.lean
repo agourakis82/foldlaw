@@ -1810,6 +1810,46 @@ theorem lineElem_sq_ne_zero {m : ℕ} {a b : BUnit m} (ha : a ≠ bone m) (hb : 
   obtain ⟨hA, _⟩ := (ann_char ha hb τ a b τ).1 h
   exact not_anti_of_mem_Hset ha hb hab (mem_Hset.2 (Or.inr (Or.inl rfl))) hA
 
+/-- The parametrisation of lines by triples is injective: same representative,
+same triple. -/
+theorem line_inj {m : ℕ} {c d c' d' : BUnit m} {s s' : Bool}
+    (h : lineElem c d s = lineElem c' d' s') : c = c' ∧ d = d' ∧ s = s' := by
+  have h' : (dbl (beval c) (cond s (beval d) (neg (beval d))) : CD (m + 1))
+      = dbl (beval c') (cond s' (beval d') (neg (beval d'))) := h
+  injection h' with hidx h1 h2
+  cases s with
+  | true =>
+    cases s' with
+    | true =>
+      rw [cond_true, cond_true] at h2
+      exact ⟨beval_inj m c c' h1, beval_inj m d d' h2, rfl⟩
+    | false =>
+      rw [cond_true, cond_false] at h2
+      exact absurd h2 (beval_ne_neg d d')
+  | false =>
+    cases s' with
+    | true =>
+      rw [cond_false, cond_true] at h2
+      exact absurd h2.symm (beval_ne_neg d' d)
+    | false =>
+      rw [cond_false, cond_false] at h2
+      have h3 := congrArg neg h2
+      rw [neg_neg, neg_neg] at h3
+      exact ⟨beval_inj m c c' h1, beval_inj m d d' h3, rfl⟩
+
+/-- A line representative is never the negative of another: distinct triples
+give distinct lines, with no sign collision. -/
+theorem line_ne_neg {m : ℕ} (c d c' d' : BUnit m) (s s' : Bool) :
+    lineElem c d s ≠ neg (lineElem c' d' s') := by
+  intro h
+  have h2 : (neg (lineElem c' d' s') : CD (m + 1))
+      = dbl (neg (beval c' : CD m)) (neg (cond s' (beval d') (neg (beval d')))) := rfl
+  have h4 : (lineElem c d s : CD (m + 1))
+      = dbl (beval c) (cond s (beval d) (neg (beval d))) := rfl
+  rw [h2, h4] at h
+  injection h with hidx h3 _
+  exact beval_ne_neg c c' h3
+
 /-- The anti-associating units are counted by `N`. -/
 theorem card_anti_eq_N {m : ℕ} (a b : BUnit m) :
     Fintype.card {r : BUnit m // Anti a b r} = N a b := by
@@ -1908,5 +1948,7 @@ theorem zhilina_degree_eq_birth {m : ℕ} (a b : BUnit m) (ha : a ≠ bone m) (h
 #print axioms conj_lineElem
 #print axioms tgt_ne_self
 #print axioms anti_tgt_ne_bone
+#print axioms line_inj
+#print axioms line_ne_neg
 
 end Foldlaw
