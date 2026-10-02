@@ -1458,6 +1458,420 @@ def closedCheck (m : ℕ) : Bool :=
     p.1 ≠ bone m ∧ p.2 ≠ bone m ∧ p.1 ≠ p.2 ∧
       (birth p.1 p.2 : ℤ) ≠ birthClosed m (toNat p.1) (toNat p.2)) = ∅
 
+/-! ## Floor E: the Zhilina bridge — graph degrees are birth values
+
+Zhilina (arXiv 2608.28163) studies the "orthogonality graph" Γ_e(A_{n+1}):
+its vertices are the lines ±(e_c, s·e_d) of doubly pure basis-pair zero
+divisors of A_{m+1} = CD (m+1), and distinct vertices are adjacent iff both
+products vanish (Part I: "adjacent iff ab = ba = 0"). Her special vertices
+(the ones with a ℓ-component) have degree 2^n − 4; the non-special degrees
+are left symbolic (Part II, Lemma 5.1 keeps a `K` undetermined).
+
+The bridge below closes that gap: the lines that annihilate the line
+±(e_a, s·e_b) bilaterally are exactly
+  (e_r, ±(e_a e_r) e_b),  one line per anti-associating r,
+so the degree of every vertex is `birth a b`. The three ingredients:
+`ann_two_sided` (a doubly pure product vanishing one way vanishes both
+ways, by the conjugation trick), `ann_char` (BDI 11.1: w = (c, σd) is killed
+iff c anti-associates and σd = (e_a e_c) e_b), and the sign bookkeeping
+`lineSign` (for anti r exactly one σ works). -/
+
+/-- `Same` survives negating the left argument. -/
+theorem same_neg_left_iff {m : ℕ} {P : CD m} {u : BUnit m} :
+    Same (neg P) (beval u) ↔ Same P (beval u) := by
+  constructor
+  · intro h
+    have h2 := Same.neg_left h
+    rw [neg_neg] at h2
+    exact h2
+  · exact Same.neg_left
+
+/-- A unit is never any unit's negative. -/
+theorem beval_ne_neg {m : ℕ} (u v : BUnit m) : beval u ≠ neg (beval v) := by
+  intro h
+  have huv : u = v := beval_neg_inj m u v h
+  rw [← huv] at h
+  exact beval_ne_neg_self u h
+
+/-- Sign-literal normalisation (iota on `cond`). -/
+theorem cond_true {m : ℕ} (x y : CD m) : cond true x y = x := rfl
+theorem cond_false {m : ℕ} (x y : CD m) : cond false x y = y := rfl
+
+/-- The second component of an annihilating line is pinned to `tgt`. -/
+theorem cond_eq_unit_unique {m : ℕ} {d u : BUnit m} {s : Bool} {T : CD m}
+    (hT : Same T (beval u)) (h : cond s (beval d) (neg (beval d)) = T) : d = u := by
+  rcases hT with hT | hT
+  · cases s with
+    | true =>
+      rw [cond_true] at h
+      exact beval_inj m d u (h.trans hT)
+    | false =>
+      rw [cond_false] at h
+      have h2 := congrArg neg h
+      rw [neg_neg] at h2
+      exact absurd (h2.trans (congrArg neg hT)) (beval_ne_neg d u)
+  · cases s with
+    | true =>
+      rw [cond_true, hT] at h
+      exact absurd h (beval_ne_neg d u)
+    | false =>
+      rw [cond_false, hT] at h
+      have h2 := congrArg neg h
+      rw [neg_neg, neg_neg] at h2
+      exact beval_inj m d u h2
+
+/-- The triple product lands on `tgt` up to sign. -/
+theorem triple_same_tgt {m : ℕ} (a b r : BUnit m) :
+    Same ((beval a * beval r) * beval b) (beval (tgt a b r)) := by
+  have h1 := (beval_mul_same a r).mul_right (beval b)
+  have h2 := beval_mul_same (bxor a r) b
+  have h3 : tgt a b r = bxor (bxor a r) b := by
+    show bxor a (bxor r b) = bxor (bxor a r) b
+    rw [← bxor_assoc]
+  rw [h3]
+  exact h1.trans h2
+
+/-- The line ±(e_c, s·e_d) as an element of `CD (m+1)`, first sign fixed. -/
+def lineElem {m : ℕ} (c d : BUnit m) (s : Bool) : CD (m + 1) :=
+  dbl (beval c) (cond s (beval d) (neg (beval d)))
+
+/-- The line ±(e_c, s·e_d) is annihilated by the line ±(e_a, τ·e_b)
+(one-sided by definition; `annLine_bilateral` upgrades to Zhilina's
+two-sided adjacency). -/
+def annLine {m : ℕ} (a b : BUnit m) (τ : Bool) (c d : BUnit m) (s : Bool) : Prop :=
+  lineElem a b τ * lineElem c d s = (cdZero : CD (m + 1))
+
+/-- Signed units keep their conjugation property. -/
+theorem conj_cond_self {m : ℕ} {y : CD m} (hy : conj y = neg y) (s : Bool) :
+    conj (cond s y (neg y)) = neg (cond s y (neg y)) := by
+  cases s with
+  | true => exact hy
+  | false =>
+    rw [cond_false, conj_neg, hy]
+
+/-- Signed units keep their square. -/
+theorem sq_cond_self {m : ℕ} {y : CD m} (hy2 : y * y = neg (cdOne : CD m)) (s : Bool) :
+    (cond s y (neg y)) * (cond s y (neg y)) = neg (cdOne : CD m) := by
+  cases s with
+  | true => exact hy2
+  | false =>
+    rw [cond_false, neg_mul, mul_neg, neg_neg]
+    exact hy2
+
+/-- Signed units keep their right alternativity. -/
+theorem rart_cond_self {m : ℕ} {y : CD m}
+    (hart : ∀ w : CD m, (w * y) * y = w * (y * y)) (s : Bool) (w : CD m) :
+    (w * cond s y (neg y)) * cond s y (neg y) = w * (cond s y (neg y) * cond s y (neg y)) := by
+  cases s with
+  | true => exact hart w
+  | false =>
+    rw [cond_false]
+    have e2 : neg y * neg y = y * y := by rw [neg_mul, mul_neg, neg_neg]
+    have e3 : (w * neg y) * neg y = (w * y) * y := by
+      rw [mul_neg w y, neg_mul, mul_neg, neg_neg]
+    rw [e3, e2, hart w]
+
+theorem conj_lineElem {m : ℕ} {c d : BUnit m} (hc : c ≠ bone m) (s : Bool) :
+    conj (lineElem c d s) = neg (lineElem c d s) := by
+  show dbl (conj (beval c)) (neg (cond s (beval d) (neg (beval d))))
+      = dbl (neg (beval c)) (neg (cond s (beval d) (neg (beval d))))
+  rw [conj_beval_of_ne hc]
+
+/-- Doubly pure annihilation is automatically two-sided (conjugation trick). -/
+theorem ann_two_sided {m : ℕ} {a b c d : BUnit m} (ha : a ≠ bone m) (hc : c ≠ bone m)
+    (τ s : Bool)
+    (h : lineElem a b τ * lineElem c d s = (cdZero : CD (m + 1))) :
+    lineElem c d s * lineElem a b τ = (cdZero : CD (m + 1)) := by
+  have h1 := congrArg conj h
+  rw [conj_mul, conj_lineElem ha, conj_lineElem hc, conj_zero,
+    neg_mul, mul_neg, neg_neg] at h1
+  exact h1
+
+/-- The anti-associator vanishes on a unit iff the triple anti-associates. -/
+theorem wa_beval_zero_iff_anti {m : ℕ} (a b c : BUnit m) :
+    WA (beval a) (beval b) (beval c) = (cdZero : CD m) ↔ Anti a b c := by
+  constructor
+  · intro h
+    by_contra hna
+    rw [WA_beval_of_not_anti hna] at h
+    rcases smul_eq_zero.1 h with h2 | h2
+    · exact absurd h2 (by norm_num)
+    · rcases right_same a b c with hs | hs
+      · rw [hs] at h2
+        exact beval_ne_zero (tgt a b c) h2
+      · rw [hs] at h2
+        have h3 := congrArg neg h2
+        rw [neg_neg] at h3
+        exact beval_ne_zero (tgt a b c) (h3.trans neg_zero)
+  · intro h
+    exact WA_beval_of_anti h
+
+/-- Flipping the sign of the middle slot flips the anti-associator. -/
+theorem wa_neg {m : ℕ} (a b c : BUnit m) :
+    WA (beval a) (neg (beval b)) (beval c) = neg (WA (beval a) (beval b) (beval c)) := by
+  rw [WA_apply, WA_apply]
+  have e1 : (beval a * beval c) * neg (beval b) = neg ((beval a * beval c) * beval b) :=
+    mul_neg _ _
+  have e2 : beval a * (beval c * neg (beval b)) = neg (beval a * (beval c * beval b)) := by
+    rw [mul_neg, mul_neg]
+  rw [e1, e2, ← neg_add]
+
+/-- The same, with the annihilator's second slot sign-flipped. -/
+theorem wa_cond_zero_iff_anti {m : ℕ} {b : BUnit m} (a c : BUnit m) (τ : Bool) :
+    WA (beval a) (cond τ (beval b) (neg (beval b))) (beval c) = (cdZero : CD m) ↔
+      Anti a b c := by
+  cases τ with
+  | true => exact wa_beval_zero_iff_anti a b c
+  | false =>
+    rw [cond_false]
+    constructor
+    · intro h
+      rw [wa_neg] at h
+      have h3 := congrArg neg h
+      rw [neg_neg] at h3
+      exact (wa_beval_zero_iff_anti a b c).1 (h3.trans neg_zero)
+    · intro hA
+      have h2 := (wa_beval_zero_iff_anti a b c).2 hA
+      rw [wa_neg, congrArg neg h2]
+      exact neg_zero
+
+/-- **Characterisation of annihilating lines** (BDI 11.1, unit-pair form):
+the line ±(e_c, s·e_d) is killed by ±(e_a, τ·e_b) iff c anti-associates
+between a and b and the signed second component equals (e_a e_c)·(τ·e_b). -/
+theorem ann_char {m : ℕ} {a b : BUnit m} (ha : a ≠ bone m) (hb : b ≠ bone m) (τ : Bool)
+    (c d : BUnit m) (s : Bool) :
+    lineElem a b τ * lineElem c d s = (cdZero : CD (m + 1)) ↔
+      (Anti a b c ∧ cond s (beval d) (neg (beval d))
+        = (beval a * beval c) * (cond τ (beval b) (neg (beval b)))) := by
+  have key := ker_Lz_iff_ker_W (beval a) (cond τ (beval b) (neg (beval b)))
+    (lart a) (rart_cond_self (rart b) τ) (conj_beval_of_ne ha)
+    (conj_cond_self (conj_beval_of_ne hb) τ) (sq_beval ha)
+    (sq_cond_self (sq_beval hb) τ) (beval c) (cond s (beval d) (neg (beval d)))
+  constructor
+  · intro h
+    obtain ⟨h1, h2⟩ := key.1 h
+    rw [← WA_apply] at h2
+    exact ⟨(wa_cond_zero_iff_anti a c τ).1 h2, h1⟩
+  · rintro ⟨hA, h1⟩
+    have h2 := (wa_cond_zero_iff_anti a c τ).2 hA
+    rw [WA_apply] at h2
+    exact key.2 ⟨h1, h2⟩
+
+/-- τ-normalised form of `ann_char` (vertex sign true). -/
+theorem ann_char_true {m : ℕ} {a b c d : BUnit m} (ha : a ≠ bone m) (hb : b ≠ bone m)
+    (s : Bool) :
+    lineElem a b true * lineElem c d s = (cdZero : CD (m + 1)) ↔
+      (Anti a b c ∧ cond s (beval d) (neg (beval d)) = (beval a * beval c) * beval b) := by
+  rw [ann_char ha hb true c d s, cond_true]
+
+/-- τ-normalised form of `ann_char` (vertex sign false). -/
+theorem ann_char_false {m : ℕ} {a b c d : BUnit m} (ha : a ≠ bone m) (hb : b ≠ bone m)
+    (s : Bool) :
+    lineElem a b false * lineElem c d s = (cdZero : CD (m + 1)) ↔
+      (Anti a b c ∧ cond s (beval d) (neg (beval d))
+        = (beval a * beval c) * neg (beval b)) := by
+  rw [ann_char ha hb false c d s, cond_false]
+
+/-- Flipping the line sign negates the signed second component. -/
+theorem cond_not_neg {m : ℕ} (u : BUnit m) (s : Bool) :
+    cond (!s) (beval u) (neg (beval u)) = neg (cond s (beval u) (neg (beval u))) := by
+  cases s with
+  | false =>
+    show beval u = neg (neg (beval u))
+    exact (neg_neg (beval u)).symm
+  | true => rfl
+
+/-- Adjacency against the flipped vertex is adjacency against the vertex
+with the flipped line sign. -/
+theorem annLine_flip {m : ℕ} {a b c d : BUnit m} (ha : a ≠ bone m) (hb : b ≠ bone m)
+    (s : Bool) :
+    annLine a b false c d s ↔ annLine a b true c d (!s) := by
+  unfold annLine
+  rw [ann_char_false ha hb s, ann_char_true ha hb (!s)]
+  constructor
+  · rintro ⟨hA, h1⟩
+    exact ⟨hA, by rw [cond_not_neg d s, h1, mul_neg, neg_neg]⟩
+  · rintro ⟨hA, h1⟩
+    refine ⟨hA, ?_⟩
+    have h2 := congrArg neg h1
+    rw [cond_not_neg d s, neg_neg, ← mul_neg] at h2
+    exact h2
+
+open Classical in
+/-- The sign that makes the second component match, for anti r. -/
+noncomputable def lineSign {m : ℕ} (a b r : BUnit m) : Bool :=
+  if (beval a * beval r) * beval b = beval (tgt a b r) then true else false
+
+theorem lineSign_spec {m : ℕ} (a b r : BUnit m) :
+    cond (lineSign a b r) (beval (tgt a b r)) (neg (beval (tgt a b r)))
+      = (beval a * beval r) * beval b := by
+  unfold lineSign
+  split
+  · next h =>
+    rw [cond_true]
+    exact h.symm
+  · next h =>
+    rcases triple_same_tgt a b r with h' | h'
+    · exact absurd h' h
+    · rw [cond_false]
+      exact h'.symm
+
+/-- Membership in `annLine` gives the anti-association. -/
+theorem anti_of_annLine {m : ℕ} {a b c d : BUnit m} {s : Bool}
+    (ha : a ≠ bone m) (hb : b ≠ bone m) (h : annLine a b true c d s) : Anti a b c :=
+  ((ann_char_true ha hb s).1 h).1
+
+/-- Every anti-associating r yields an annihilating line. -/
+theorem ann_of_anti {m : ℕ} {a b r : BUnit m} (ha : a ≠ bone m) (hb : b ≠ bone m)
+    (hA : Anti a b r) : annLine a b true r (tgt a b r) (lineSign a b r) :=
+  (ann_char_true ha hb (lineSign a b r)).2 ⟨hA, lineSign_spec a b r⟩
+
+/-- For anti c, the annihilating line is unique: `d = tgt` and `s = lineSign`. -/
+theorem ann_line_unique {m : ℕ} {a b c d : BUnit m} (ha : a ≠ bone m) (hb : b ≠ bone m)
+    (hab : a ≠ b) (hA : Anti a b c) (s : Bool)
+    (h : cond s (beval d) (neg (beval d)) = (beval a * beval c) * beval b) :
+    d = tgt a b c ∧ s = lineSign a b c := by
+  have hdu : d = tgt a b c := cond_eq_unit_unique (triple_same_tgt a b c) h
+  refine ⟨hdu, ?_⟩
+  rcases triple_same_tgt a b c with hT | hT
+  · have hls : lineSign a b c = true := by
+      unfold lineSign
+      split
+      · rfl
+      · next h' => exact absurd hT h'
+    cases s with
+    | true => exact hls.symm
+    | false =>
+      rw [cond_false, hdu, hT] at h
+      exact absurd h.symm (beval_ne_neg_self (tgt a b c))
+  · have hne : ¬((beval a * beval c) * beval b = beval (tgt a b c)) := by
+      intro h'
+      rw [h'] at hT
+      exact beval_ne_neg_self (tgt a b c) hT
+    have hls : lineSign a b c = false := by
+      unfold lineSign
+      split
+      · next h' => exact absurd h' hne
+      · rfl
+    cases s with
+    | false => exact hls.symm
+    | true =>
+      rw [cond_true, hdu, hT] at h
+      exact absurd h (beval_ne_neg_self (tgt a b c))
+
+/-- `tgt` has no fixed point when a ≠ b. -/
+theorem tgt_ne_self {m : ℕ} (a b c : BUnit m) (hab : a ≠ b) : tgt a b c ≠ c := by
+  intro h
+  rw [show tgt a b c = bxor a (bxor c b) from rfl] at h
+  have h5 := congrArg (fun t => bxor t b) h
+  rw [bxor_assoc, bxor_assoc, bxor_self, bxor_bone] at h5
+  rw [bxor_comm c b] at h5
+  have h6 := congrArg (fun t => bxor t c) h5
+  rw [bxor_assoc, bxor_self, bxor_bone, bxor_assoc, bxor_self, bxor_bone] at h6
+  exact absurd h6 hab
+
+/-- `tgt` never lands on the quaternion index set. -/
+theorem anti_tgt_ne_bone {m : ℕ} {a b c : BUnit m} (ha : a ≠ bone m) (hb : b ≠ bone m)
+    (hab : a ≠ b) (hA : Anti a b c) : tgt a b c ≠ bone m := by
+  intro h
+  rw [show tgt a b c = bxor a (bxor c b) from rfl] at h
+  have h2 : a = bxor c b := bxor_eq_bone_iff.1 h
+  have h3 : bxor a b = c := by
+    rw [h2, bxor_assoc, bxor_self, bxor_bone]
+  exact not_anti_of_mem_Hset ha hb hab (mem_Hset.2 (Or.inr (Or.inr (Or.inr h3.symm)))) hA
+
+/-- Membership in `annLine` automatically gives Zhilina's two-sided adjacency
+and the doubly-pure vertex conditions. -/
+theorem annLine_bilateral {m : ℕ} {a b c d : BUnit m} {τ s : Bool}
+    (ha : a ≠ bone m) (hb : b ≠ bone m) (hab : a ≠ b)
+    (h : annLine a b τ c d s) :
+    lineElem c d s * lineElem a b τ = (cdZero : CD (m + 1)) ∧ c ≠ bone m ∧ d ≠ bone m
+      ∧ c ≠ d := by
+  obtain ⟨hA, h1⟩ := (ann_char ha hb τ c d s).1 h
+  have hc : c ≠ bone m := fun hcb =>
+    not_anti_of_mem_Hset ha hb hab (mem_Hset.2 (Or.inl hcb)) hA
+  have hT : Same ((beval a * beval c) * (cond τ (beval b) (neg (beval b))))
+      (beval (tgt a b c)) := by
+    cases τ with
+    | true => exact triple_same_tgt a b c
+    | false =>
+      rw [cond_false, mul_neg]
+      exact same_neg_left_iff.2 (triple_same_tgt a b c)
+  have hdu : d = tgt a b c := cond_eq_unit_unique hT h1
+  refine ⟨?_, hc, ?_, ?_⟩
+  · exact ann_two_sided ha hc τ s h
+  · exact fun hdb => anti_tgt_ne_bone ha hb hab hA (hdu.symm.trans hdb)
+  · exact fun hcd => tgt_ne_self a b c hab (hcd.trans hdu).symm
+
+/-- No line annihilates itself. -/
+theorem lineElem_sq_ne_zero {m : ℕ} {a b : BUnit m} (ha : a ≠ bone m) (hb : b ≠ bone m)
+    (hab : a ≠ b) (τ : Bool) : lineElem a b τ * lineElem a b τ ≠ (cdZero : CD (m + 1)) := by
+  intro h
+  obtain ⟨hA, _⟩ := (ann_char ha hb τ a b τ).1 h
+  exact not_anti_of_mem_Hset ha hb hab (mem_Hset.2 (Or.inr (Or.inl rfl))) hA
+
+/-- The anti-associating units are counted by `N`. -/
+theorem card_anti_eq_N {m : ℕ} (a b : BUnit m) :
+    Fintype.card {r : BUnit m // Anti a b r} = N a b := by
+  classical
+  rw [Fintype.card_subtype, N_def, Finset.card_eq_sum_ones, ← Finset.sum_filter]
+
+/-- The annihilating lines with vertex sign `true` are counted by `N`. -/
+theorem annLines_card_true {m : ℕ} (a b : BUnit m) (ha : a ≠ bone m) (hb : b ≠ bone m)
+    (hab : a ≠ b) :
+    Fintype.card {p : BUnit m × BUnit m × Bool // annLine a b true p.1 p.2.1 p.2.2}
+      = N a b := by
+  classical
+  have main : {r : BUnit m // Anti a b r} ≃
+      {p : BUnit m × BUnit m × Bool // annLine a b true p.1 p.2.1 p.2.2} :=
+    { toFun := fun r => ⟨(r.1, tgt a b r.1, lineSign a b r.1), ann_of_anti ha hb r.2⟩
+      , invFun := fun p => ⟨p.1.1, anti_of_annLine ha hb p.2⟩
+      , left_inv := fun r => Subtype.ext rfl
+      , right_inv := fun p => by
+          obtain ⟨⟨c, d, s⟩, hp⟩ := p
+          obtain ⟨hA, h1⟩ := (ann_char_true ha hb s).1 hp
+          obtain ⟨hd, hs⟩ := ann_line_unique ha hb hab hA s h1
+          apply Subtype.ext
+          show (c, tgt a b c, lineSign a b c) = (c, d, s)
+          have hd' : d = tgt a b c := hd
+          have hs' : s = lineSign a b c := hs
+          rw [hd', hs'] }
+  rw [Fintype.card_congr main.symm, card_anti_eq_N a b]
+
+/-- **Zhilina bridge**: in the two-sided zero-divisor graph on doubly pure
+basis-pair lines of `CD (m+1)` (Zhilina, arXiv 2608.28163 — Γ_e, Part I:
+adjacency iff `ab = ba = 0`), the degree of the vertex line ±(e_a, τ·e_b)
+equals `birth a b`. By `annLine_bilateral` every line counted here is a
+genuine two-sided adjacent vertex (doubly pure, distinct components), and by
+`lineElem_sq_ne_zero` no vertex is adjacent to itself. This determines the
+non-special vertex degrees that Part II, Lemma 5.1 leaves as a symbolic `K`;
+in particular the special degree 2^n − 4 of Part I is the maximum case
+`birth(c, ℓ)` of the same function. -/
+theorem zhilina_degree_eq_birth {m : ℕ} (a b : BUnit m) (ha : a ≠ bone m) (hb : b ≠ bone m)
+    (hab : a ≠ b) (τ : Bool) :
+    Fintype.card {p : BUnit m × BUnit m × Bool // annLine a b τ p.1 p.2.1 p.2.2}
+      = birth a b := by
+  classical
+  cases τ with
+  | true => rw [annLines_card_true a b ha hb hab, N_eq_birth a b ha hb hab]
+  | false =>
+    have flip : {p : BUnit m × BUnit m × Bool // annLine a b false p.1 p.2.1 p.2.2} ≃
+        {p : BUnit m × BUnit m × Bool // annLine a b true p.1 p.2.1 p.2.2} :=
+      { toFun := fun p => ⟨(p.1.1, p.1.2.1, !p.1.2.2), (annLine_flip ha hb p.1.2.2).1 p.2⟩
+        , invFun := fun p =>
+            ⟨(p.1.1, p.1.2.1, !p.1.2.2), by
+              exact (annLine_flip ha hb (!p.1.2.2)).2
+                (by rw [Bool.not_not]; exact p.2)⟩
+        , left_inv := fun p => by
+            obtain ⟨⟨c, d, s⟩, hp⟩ := p
+            apply Subtype.ext
+            simp [Bool.not_not]
+        , right_inv := fun p => by
+            obtain ⟨⟨c, d, s⟩, hp⟩ := p
+            apply Subtype.ext
+            simp [Bool.not_not] }
+    rw [Fintype.card_congr flip, annLines_card_true a b ha hb hab, N_eq_birth a b ha hb hab]
+
 /-! ## Seal -/
 
 #print axioms finrank_ker_WA_eq_N
@@ -1474,5 +1888,25 @@ def closedCheck (m : ℕ) : Bool :=
 #print axioms birth_mod_eight
 #print axioms finrank_ann_birth
 #print axioms exists_annihilator
+#print axioms ann_char
+#print axioms annLine_flip
+#print axioms annLines_card_true
+#print axioms zhilina_degree_eq_birth
+#print axioms annLine_bilateral
+#print axioms lineElem_sq_ne_zero
+#print axioms ann_two_sided
+#print axioms wa_beval_zero_iff_anti
+#print axioms wa_neg
+#print axioms wa_cond_zero_iff_anti
+#print axioms ann_char_true
+#print axioms ann_char_false
+#print axioms lineSign_spec
+#print axioms ann_line_unique
+#print axioms card_anti_eq_N
+#print axioms triple_same_tgt
+#print axioms cond_eq_unit_unique
+#print axioms conj_lineElem
+#print axioms tgt_ne_self
+#print axioms anti_tgt_ne_bone
 
 end Foldlaw
