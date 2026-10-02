@@ -2722,6 +2722,144 @@ theorem bUnit_card (m : ℕ) : Fintype.card (BUnit m) = 2 ^ m := by
     rw [Fintype.card_congr (bUnitSuccEquiv n), Fintype.card_sum, ih,
       ← Nat.mul_two, ← pow_succ]
 
+/-!
+### Floor 4, step B: linear independence of the unit family
+
+The unit family `beval : BUnit m → CD m` is linearly independent. The
+proof runs by level induction; the successor step partitions the sum
+over `BUnit (n+1)` into lower and upper halves via the successor
+equivalence, pulls each half through the doubling, and reads off the
+two components. Together with `bUnit_card` this turns the family into
+a genuine basis (step C), which is what the H/H^⊥ decomposition
+downstream needs.
+-/
+
+/-- Zero self-adds to zero (a direct instance of `add_zero`). -/
+theorem cdZero_add_cdZero {m : ℕ} : (cdZero : CD m) + cdZero = cdZero :=
+  add_zero cdZero
+
+/-- The instance-level copy of `smul_zero`. -/
+theorem smul_zero' {m : ℕ} (r : ℝ) : r • (cdZero : CD m) = cdZero := smul_zero r
+
+/-- Scalars pass through the doubling (index has succ shape: defeq). -/
+theorem smul_dbl {m : ℕ} (r : ℝ) (x y : CD m) :
+    r • (dbl x y : CD (m + 1)) = dbl (r • x) (r • y) := rfl
+
+/-- Doubling into the lower slot, as an additive homomorphism. -/
+def dblLowerHom {m : ℕ} : CD m →+ CD (m + 1) where
+  toFun z := dbl z (cdZero : CD m)
+  map_zero' := rfl
+  map_add' a b := by
+    have hsum : (a, (cdZero : CD m)) + (b, cdZero) = (a + b, cdZero) := by
+      show (a + b, (cdZero : CD m) + cdZero) = (a + b, cdZero)
+      rw [cdZero_add_cdZero]
+    have h := cdPairLm.map_add (a, cdZero) (b, cdZero)
+    rw [hsum] at h
+    exact h
+
+/-- Doubling into the upper slot, as an additive homomorphism. -/
+def dblUpperHom {m : ℕ} : CD m →+ CD (m + 1) where
+  toFun z := dbl (cdZero : CD m) z
+  map_zero' := rfl
+  map_add' a b := by
+    have hsum : ((cdZero : CD m), a) + (cdZero, b) = (cdZero, a + b) := by
+      show ((cdZero : CD m) + cdZero, a + b) = (cdZero, a + b)
+      rw [cdZero_add_cdZero]
+    have h := cdPairLm.map_add (cdZero, a) (cdZero, b)
+    rw [hsum] at h
+    exact h
+
+/-- Sums of lower doubles pass through the doubling. -/
+theorem sum_dbl_lower {m : ℕ} (f : BUnit m → CD m) :
+    (∑ u : BUnit m, dbl (f u) (cdZero : CD m))
+      = dbl (∑ u : BUnit m, f u) (cdZero : CD m) :=
+  (map_sum dblLowerHom f Finset.univ).symm
+
+/-- Sums of upper doubles pass through the doubling. -/
+theorem sum_dbl_upper {m : ℕ} (f : BUnit m → CD m) :
+    (∑ u : BUnit m, dbl (cdZero : CD m) (f u))
+      = dbl (cdZero : CD m) (∑ u : BUnit m, f u) :=
+  (map_sum dblUpperHom f Finset.univ).symm
+
+/-- A sum over the lower units collapses to the lower slot. -/
+theorem sum_lower_split {m : ℕ} (g : BUnit (m + 1) → ℝ) :
+    (∑ u : BUnit m, g (BUnit.lower u) • beval (BUnit.lower u))
+      = dbl (∑ u : BUnit m, g (BUnit.lower u) • beval u) (cdZero : CD m) := by
+  rw [Finset.sum_congr rfl (fun u _ => by
+    show g (BUnit.lower u) • (dbl (beval u) (cdZero : CD m))
+      = dbl (g (BUnit.lower u) • beval u) (cdZero : CD m)
+    rw [smul_dbl, smul_zero']), sum_dbl_lower _]
+
+/-- A sum over the upper units collapses to the upper slot. -/
+theorem sum_upper_split {m : ℕ} (g : BUnit (m + 1) → ℝ) :
+    (∑ u : BUnit m, g (BUnit.upper u) • beval (BUnit.upper u))
+      = dbl (cdZero : CD m) (∑ u : BUnit m, g (BUnit.upper u) • beval u) := by
+  rw [Finset.sum_congr rfl (fun u _ => by
+    show g (BUnit.upper u) • (dbl (cdZero : CD m) (beval u))
+      = dbl (cdZero : CD m) (g (BUnit.upper u) • beval u)
+    rw [smul_dbl, smul_zero']), sum_dbl_upper _]
+
+instance : Unique (BUnit 0) where
+  default := BUnit.real0
+  uniq a := by cases a; rfl
+
+/-- Independence, by level induction. -/
+theorem beval_linearIndependent_aux : ∀ (m : ℕ) (g : BUnit m → ℝ),
+    (∑ i : BUnit m, g i • beval i) = (cdZero : CD m) → ∀ i : BUnit m, g i = 0 := by
+  intro m
+  induction m with
+  | zero =>
+    intro g hg i
+    cases i with
+    | real0 =>
+      have h1 : (∑ i : BUnit 0, g i • beval i)
+          = g BUnit.real0 • beval BUnit.real0 :=
+        Finset.sum_eq_single BUnit.real0
+          (fun b _ hb => by cases b; exact absurd rfl hb)
+          (fun h => absurd (Finset.mem_univ BUnit.real0) h)
+      rw [h1] at hg
+      have h' : zero ((g BUnit.real0) * 1) = zero 0 := hg
+      injection h' with h2
+      rw [_root_.mul_one] at h2
+      exact h2
+  | succ n ih =>
+    intro g hg
+    have hsplit : (∑ i : BUnit (n + 1), g i • beval i)
+        = (∑ u : BUnit n, g (BUnit.lower u) • beval (BUnit.lower u))
+          + (∑ u : BUnit n, g (BUnit.upper u) • beval (BUnit.upper u)) := by
+      calc (∑ i : BUnit (n + 1), g i • beval i)
+          = (∑ s : BUnit n ⊕ BUnit n, (fun j : BUnit (n + 1) => g j • beval j)
+              ((bUnitSuccEquiv n).symm s)) :=
+            Fintype.sum_equiv (bUnitSuccEquiv n)
+              (fun j : BUnit (n + 1) => g j • beval j)
+              (fun s : BUnit n ⊕ BUnit n =>
+                g ((bUnitSuccEquiv n).symm s) • beval ((bUnitSuccEquiv n).symm s))
+              (fun j => by cases j <;> rfl)
+        _ = (∑ u : BUnit n, g (BUnit.lower u) • beval (BUnit.lower u))
+            + (∑ u : BUnit n, g (BUnit.upper u) • beval (BUnit.upper u)) :=
+            Fintype.sum_sum_type
+              (fun s : BUnit n ⊕ BUnit n =>
+                g ((bUnitSuccEquiv n).symm s) • beval ((bUnitSuccEquiv n).symm s))
+    rw [hsplit, sum_lower_split, sum_upper_split] at hg
+    have h' : dbl ((∑ u : BUnit n, g (BUnit.lower u) • beval u) + (cdZero : CD n))
+        ((cdZero : CD n) + (∑ u : BUnit n, g (BUnit.upper u) • beval u))
+      = (cdZero : CD (n + 1)) := hg
+    have hfst : (∑ u : BUnit n, g (BUnit.lower u) • beval u) + (cdZero : CD n)
+        = (cdZero : CD n) := congrArg Prod.fst (congrArg cdUnpair h')
+    have hsnd : (cdZero : CD n) + (∑ u : BUnit n, g (BUnit.upper u) • beval u)
+        = (cdZero : CD n) := congrArg Prod.snd (congrArg cdUnpair h')
+    rw [add_zero] at hfst
+    rw [zero_add] at hsnd
+    intro i
+    cases i with
+    | lower u => exact ih (fun v => g (BUnit.lower v)) hfst u
+    | upper u => exact ih (fun v => g (BUnit.upper v)) hsnd u
+
+/-- The unit family is linearly independent. -/
+theorem beval_linearIndependent {m : ℕ} :
+    LinearIndependent ℝ (beval : BUnit m → CD m) :=
+  Fintype.linearIndependent_iff.mpr (fun g hg => beval_linearIndependent_aux m g hg)
+
 /-- Embed a unit one level up, in the lower slot: the doubling that builds
 the centre family (i, j) at every height. -/
 def embed1 {m : ℕ} (x : CD m) : CD (m + 1) := dbl x (cdZero : CD m)
@@ -3303,5 +3441,13 @@ dependent type theory (propext, Classical.choice, Quot.sound) -- no
 #print axioms beval_inj
 #print axioms basisUnit_beval
 #print axioms bUnit_card
+#print axioms cdZero_add_cdZero
+#print axioms smul_zero'
+#print axioms smul_dbl
+#print axioms sum_dbl_lower
+#print axioms sum_dbl_upper
+#print axioms sum_lower_split
+#print axioms sum_upper_split
+#print axioms beval_linearIndependent
 
 end Foldlaw
