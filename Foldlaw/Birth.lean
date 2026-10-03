@@ -1879,14 +1879,15 @@ theorem annLines_card_true {m : ℕ} (a b : BUnit m) (ha : a ≠ bone m) (hb : b
   rw [Fintype.card_congr main.symm, card_anti_eq_N a b]
 
 /-- **Zhilina bridge**: in the two-sided zero-divisor graph on doubly pure
-basis-pair lines of `CD (m+1)` (Zhilina, arXiv 2608.28163 — Γ_e, Part I:
-adjacency iff `ab = ba = 0`), the degree of the vertex line ±(e_a, τ·e_b)
+basis-pair lines of `CD (m+1)` (Zhilina, orthogonality graph: vertices are
+lines of two-sided zero divisors, adjacency iff `ab = ba = 0`; Part II builds
+the subgraph Γ_e on unit-pair lines), the degree of the vertex line ±(e_a, τ·e_b)
 equals `birth a b`. By `annLine_bilateral` every line counted here is a
 genuine two-sided adjacent vertex (doubly pure, distinct components), and by
-`lineElem_sq_ne_zero` no vertex is adjacent to itself. This determines the
-non-special vertex degrees that Part II, Lemma 5.1 leaves as a symbolic `K`;
-in particular the special degree 2^n − 4 of Part I is the maximum case
-`birth(c, ℓ)` of the same function. -/
+`lineElem_sq_ne_zero` no vertex is adjacent to itself. This evaluates, per
+vertex, the non-special degrees for which Part II proves divisibility by 4
+but gives no per-vertex value; the special degree 2^n − 4 of Part II is the
+maximum case `birth(c, ℓ)` of the same function. -/
 theorem zhilina_degree_eq_birth {m : ℕ} (a b : BUnit m) (ha : a ≠ bone m) (hb : b ≠ bone m)
     (hab : a ≠ b) (τ : Bool) :
     Fintype.card {p : BUnit m × BUnit m × Bool // annLine a b τ p.1 p.2.1 p.2.2}
