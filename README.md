@@ -74,7 +74,8 @@ lake build            # builds Foldlaw and Foldlaw.Birth; prints every #print ax
   Cayley–Dickson algebras* (Comm. Algebra 2008; arXiv math/0511691), Lemma 8.9 and Prop. 11.1;
   Lemmas 8.7–8.10 give the `LL` and `LU` embeddings; Prop. 8.11 is an existence statement
   for the values `≡ 4 (mod 8)`.
-* Zhilina, *Orthogonality graphs of real Cayley–Dickson algebras II* (arXiv 2608.28163)
+* Zhilina, *Orthogonality graphs of real Cayley–Dickson algebras II* (Internat. J. Algebra
+  Comput. 31, 2021, DOI 10.1142/S0218196721500338; graph defined in Part I, DOI ...0326)
   proves the special-vertex degree `2^n − 4` and divisibility by 4 for the rest.
 * New here, as far as the 2026-10-02 literature check reaches: the three remaining cases
   (`N_LU_bone`, `N_LU_self`, `N_UU_bone`), the closed per-pair function `birth`, the

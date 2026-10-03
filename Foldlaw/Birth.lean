@@ -1460,12 +1460,14 @@ def closedCheck (m : ℕ) : Bool :=
 
 /-! ## Floor E: the Zhilina bridge — graph degrees are birth values
 
-Zhilina (arXiv 2608.28163) studies the "orthogonality graph" Γ_e(A_{n+1}):
-its vertices are the lines ±(e_c, s·e_d) of doubly pure basis-pair zero
+Zhilina (IJAC 31, 2021; Part I: DOI 10.1142/S0218196721500326,
+Part II: DOI 10.1142/S0218196721500338) studies the "orthogonality graph"
+Γ_e(A_{n+1}): its vertices are the lines ±(e_c, s·e_d) of doubly pure basis-pair zero
 divisors of A_{m+1} = CD (m+1), and distinct vertices are adjacent iff both
-products vanish (Part I: "adjacent iff ab = ba = 0"). Her special vertices
-(the ones with a ℓ-component) have degree 2^n − 4; the non-special degrees
-are left symbolic (Part II, Lemma 5.1 keeps a `K` undetermined).
+products vanish (Part I, Def. 2.3: "adjacent iff ab = ba = 0"). Her Part II
+proves that the special vertices (the ones with a ℓ-component) have degree
+2^n − 4 and that the non-special degrees are divisible by 4, without a
+per-vertex formula.
 
 The bridge below closes that gap: the lines that annihilate the line
 ±(e_a, s·e_b) bilaterally are exactly
