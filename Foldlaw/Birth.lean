@@ -1983,21 +1983,1229 @@ pattern; (2) writing the bin index `k` as an `(m−3)`-bit string, the two claus
 act as `k ↦ 2k+1` (append 1) and `k ↦ 2(N−1−k)` (complement, append 0), so from the top bin
 at level `j+1` the reachable bins at level `m` are exactly those whose first `j−1` bits are
 equal; `J ≤ 2` pairs all pass through the single bin of level 3 and then reach every bin once.
-`spectrumCheck m` compares the formula with `birthHistogram` (the sealed recursion); it is
-`true` for `m = 3, …, 8`. -/
+`spectrumCheck m` compares the formula with `birthHistogram` (the sealed recursion).
+The formula is sealed below (`birth_spectrum`): the formal proof is the bin recurrence
+of the six clauses, not the counting argument above. -/
+
+/-- The `j`-th dyadic shell at level `m`: `3·2^(m−j−1)(2^j−1)` on the outer bins. -/
+def shellTerm (m j k : ℕ) : ℕ :=
+  if k < 2 ^ (m - 2 - j) ∨ 2 ^ (m - 3) ≤ k + 2 ^ (m - 2 - j)
+  then 3 * 2 ^ (m - j - 1) * (2 ^ j - 1) else 0
+
+/-- The top-bin cap: `3(2^(m−1)−1)` when `k = 2^(m−3) − 1`. -/
+def capTerm (m k : ℕ) : ℕ :=
+  if 4 ≤ m ∧ k + 1 = 2 ^ (m - 3) then 3 * (2 ^ (m - 1) - 1) else 0
 
 def birthSpectrum (m k : ℕ) : ℕ :=
   21 * 2 ^ (m - 3)
-  + ((List.range (m - 4)).map fun i =>
-      let j := i + 3
-      if k < 2 ^ (m - 2 - j) ∨ 2 ^ (m - 3) ≤ k + 2 ^ (m - 2 - j)
-      then 3 * 2 ^ (m - j - 1) * (2 ^ j - 1) else 0).sum
-  + (if 4 ≤ m ∧ k + 1 = 2 ^ (m - 3) then 3 * (2 ^ (m - 1) - 1) else 0)
+  + ((List.range (m - 4)).map fun i => shellTerm m (i + 3) k).sum
+  + capTerm m k
 
 def birthSpectrumList (m : ℕ) : List (ℕ × ℕ) :=
   (List.range (2 ^ (m - 3))).map fun k => (8 * k + 4, birthSpectrum m k)
 
 def spectrumCheck (m : ℕ) : Bool := birthHistogram m == birthSpectrumList m
+
+/-! ## The spectrum, sealed
+
+The histogram obeys a bin recurrence read off the six clauses. An agreeing lift
+(lower-lower, or upper-upper of a fresh pair) sends the bin `k` to the bin `2k+1`;
+a differing lift sends it to the bin `2(2^(m−3)−1−k)`; every degenerate pair lands on
+the top bin, and there are `6(2^m−1)` ordered pairs of them. The closed form obeys the
+same recurrence and the same base — at level 3 every one of the 42 ordered pairs has
+birth 4 — so the two agree at every level. -/
+
+/-- Ordered pair in the histogram bin: 1 exactly on distinct imaginary indices of birth `v`. -/
+def hit {m : ℕ} (v : ℕ) (a b : BUnit m) : ℕ :=
+  if a ≠ bone m ∧ b ≠ bone m ∧ a ≠ b ∧ birth a b = v then 1 else 0
+
+theorem birthCount_eq_sum (m v : ℕ) :
+    birthCount m v = ∑ a : BUnit m, ∑ b : BUnit m, hit v a b := by
+  classical
+  unfold birthCount
+  rw [Finset.card_eq_sum_ones, Finset.sum_filter]
+  unfold hit
+  exact Fintype.sum_prod_type'
+    (fun a b => if a ≠ bone m ∧ b ≠ bone m ∧ a ≠ b ∧ birth a b = v then 1 else 0)
+
+theorem birthCount_quad (n v : ℕ) :
+    birthCount (n + 1) v =
+      (∑ a : BUnit n, ∑ b : BUnit n, hit v (BUnit.lower a) (BUnit.lower b))
+      + (∑ a : BUnit n, ∑ b : BUnit n, hit v (BUnit.lower a) (BUnit.upper b))
+      + (∑ a : BUnit n, ∑ b : BUnit n, hit v (BUnit.upper a) (BUnit.lower b))
+      + ∑ a : BUnit n, ∑ b : BUnit n, hit v (BUnit.upper a) (BUnit.upper b) := by
+  rw [birthCount_eq_sum, sum_succ_split (fun A => ∑ B : BUnit (n + 1), hit v A B)]
+  have hL : ∀ a : BUnit n, (∑ B : BUnit (n + 1), hit v (BUnit.lower a) B)
+      = (∑ b : BUnit n, hit v (BUnit.lower a) (BUnit.lower b))
+        + ∑ b : BUnit n, hit v (BUnit.lower a) (BUnit.upper b) :=
+    fun a => sum_succ_split (fun B => hit v (BUnit.lower a) B)
+  have hU : ∀ a : BUnit n, (∑ B : BUnit (n + 1), hit v (BUnit.upper a) B)
+      = (∑ b : BUnit n, hit v (BUnit.upper a) (BUnit.lower b))
+        + ∑ b : BUnit n, hit v (BUnit.upper a) (BUnit.upper b) :=
+    fun a => sum_succ_split (fun B => hit v (BUnit.upper a) B)
+  simp_rw [hL, hU, Finset.sum_add_distrib]
+  ring
+
+theorem imag_card (m : ℕ) :
+    (Finset.univ.filter fun u : BUnit m => u ≠ bone m).card = 2 ^ m - 1 := by
+  classical
+  have h : Finset.univ.filter (fun u : BUnit m => u ≠ bone m) = Finset.univ.erase (bone m) := by
+    ext u
+    simp [Finset.mem_erase]
+  rw [h, Finset.card_erase_of_mem (Finset.mem_univ _), Finset.card_univ, bUnit_card]
+
+/-- `a ≠ 1` and (`b = 1` or `b = a`): the two maximum rows of a lower-upper lift. -/
+theorem count_max_row (d : ℕ) :
+    (∑ a : BUnit (d + 3), ∑ b : BUnit (d + 3),
+      if a ≠ bone (d + 3) ∧ (b = bone (d + 3) ∨ b = a) then 1 else 0)
+    = 2 * (2 ^ (d + 3) - 1) := by
+  classical
+  have h : ∀ a : BUnit (d + 3),
+      (∑ b : BUnit (d + 3), if a ≠ bone (d + 3) ∧ (b = bone (d + 3) ∨ b = a) then 1 else 0)
+      = if a ≠ bone (d + 3) then 2 else 0 := by
+    intro a
+    by_cases ha : a = bone (d + 3)
+    · subst ha
+      simp
+    · have hsum : (∑ b : BUnit (d + 3),
+          if a ≠ bone (d + 3) ∧ (b = bone (d + 3) ∨ b = a) then 1 else 0)
+          = ∑ b : BUnit (d + 3), if b = bone (d + 3) ∨ b = a then 1 else 0 := by
+        refine Finset.sum_congr rfl (fun b _ => ?_)
+        simp [ha]
+      rw [hsum, ← Finset.sum_filter, ← Finset.card_eq_sum_ones]
+      have hpair : (Finset.univ.filter fun b : BUnit (d + 3) =>
+          b = bone (d + 3) ∨ b = a) = {bone (d + 3), a} := by
+        ext b
+        simp [Finset.mem_insert, Finset.mem_singleton]
+      rw [hpair, Finset.card_pair (Ne.symm ha)]
+      simp [ha]
+  simp only [h]
+  have h2 : ∀ a : BUnit (d + 3),
+      (if a ≠ bone (d + 3) then 2 else 0) = 2 * (if a ≠ bone (d + 3) then 1 else 0) := by
+    intro a
+    by_cases ha : a = bone (d + 3) <;> simp [ha]
+  simp only [h2, ← Finset.mul_sum]
+  have hcard : (∑ a : BUnit (d + 3), if a ≠ bone (d + 3) then 1 else 0) = 2 ^ (d + 3) - 1 := by
+    rw [← Finset.sum_filter, ← Finset.card_eq_sum_ones, imag_card]
+  rw [hcard]
+
+/-- `b ≠ 1` and (`a = 1` or `a = b`). -/
+theorem count_max_col (d : ℕ) :
+    (∑ a : BUnit (d + 3), ∑ b : BUnit (d + 3),
+      if b ≠ bone (d + 3) ∧ (a = bone (d + 3) ∨ a = b) then 1 else 0)
+    = 2 * (2 ^ (d + 3) - 1) := by
+  classical
+  rw [Finset.sum_comm]
+  exact count_max_row d
+
+/-- Upper-upper pairs with a `1` in one slot and the two slots distinct. -/
+theorem count_max_UU (d : ℕ) :
+    (∑ a : BUnit (d + 3), ∑ b : BUnit (d + 3),
+      if a ≠ b ∧ (a = bone (d + 3) ∨ b = bone (d + 3)) then 1 else 0)
+    = 2 * (2 ^ (d + 3) - 1) := by
+  classical
+  have h : ∀ a : BUnit (d + 3),
+      (∑ b : BUnit (d + 3), if a ≠ b ∧ (a = bone (d + 3) ∨ b = bone (d + 3)) then 1 else 0)
+      = if a = bone (d + 3) then 2 ^ (d + 3) - 1 else 1 := by
+    intro a
+    by_cases ha : a = bone (d + 3)
+    · subst ha
+      have hsum : (∑ b : BUnit (d + 3),
+          if bone (d + 3) ≠ b ∧ (bone (d + 3) = bone (d + 3) ∨ b = bone (d + 3)) then 1 else 0)
+          = ∑ b : BUnit (d + 3), if bone (d + 3) ≠ b then 1 else 0 := by
+        refine Finset.sum_congr rfl (fun b _ => ?_)
+        refine if_congr ?_ rfl rfl
+        constructor
+        · rintro ⟨hne, _⟩
+          exact hne
+        · intro hne
+          exact ⟨hne, Or.inl rfl⟩
+      rw [hsum, ← Finset.sum_filter, ← Finset.card_eq_sum_ones]
+      have hfilter : (Finset.univ.filter fun b : BUnit (d + 3) => bone (d + 3) ≠ b)
+          = Finset.univ.erase (bone (d + 3)) := by
+        ext b
+        simp only [Finset.mem_filter, Finset.mem_univ, Finset.mem_erase, true_and, and_true]
+        exact ne_comm
+      rw [hfilter, Finset.card_erase_of_mem (Finset.mem_univ _), Finset.card_univ, bUnit_card]
+      simp
+    · have hsum : (∑ b : BUnit (d + 3),
+          if a ≠ b ∧ (a = bone (d + 3) ∨ b = bone (d + 3)) then 1 else 0)
+          = ∑ b : BUnit (d + 3), if a ≠ b ∧ b = bone (d + 3) then 1 else 0 := by
+        refine Finset.sum_congr rfl (fun b _ => ?_)
+        refine if_congr ?_ rfl rfl
+        constructor
+        · rintro ⟨hne, hor⟩
+          cases hor with
+          | inl hbone => exact absurd hbone ha
+          | inr hb => exact ⟨hne, hb⟩
+        · rintro ⟨hne, hb⟩
+          exact ⟨hne, Or.inr hb⟩
+      rw [hsum, ← Finset.sum_filter, ← Finset.card_eq_sum_ones]
+      have hfilter : (Finset.univ.filter fun b : BUnit (d + 3) => a ≠ b ∧ b = bone (d + 3))
+          = {bone (d + 3)} := by
+        ext b
+        simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_singleton]
+        constructor
+        · rintro ⟨_, hb⟩
+          exact hb
+        · intro hb
+          subst hb
+          exact ⟨ha, rfl⟩
+      rw [hfilter, Finset.card_singleton]
+      simp [ha]
+  simp only [h]
+  rw [← Finset.sum_erase_add _ _ (Finset.mem_univ (bone (d + 3)))]
+  simp only [ite_true]
+  have herase : (∑ a ∈ Finset.univ.erase (bone (d + 3)),
+      if a = bone (d + 3) then 2 ^ (d + 3) - 1 else 1) = 2 ^ (d + 3) - 1 := by
+    have hfun : ∀ a ∈ Finset.univ.erase (bone (d + 3)),
+        (if a = bone (d + 3) then 2 ^ (d + 3) - 1 else 1) = 1 := by
+      intro a ha
+      simp [Finset.mem_erase.1 ha]
+    rw [Finset.sum_congr rfl hfun, Finset.sum_const, Finset.card_erase_of_mem (Finset.mem_univ _),
+      Finset.card_univ, bUnit_card, smul_eq_mul, Nat.mul_one]
+  rw [herase]
+  omega
+
+theorem pow_four (d : ℕ) : 2 ^ (d + 4) = 16 * 2 ^ d := by
+  rw [pow_add, mul_comm]
+  norm_num
+
+theorem max_bin (d k : ℕ) (hk : k < 2 ^ (d + 1)) :
+    2 ^ (d + 4) - 4 = 8 * k + 4 ↔ k = 2 ^ (d + 1) - 1 := by
+  have h16 := pow_four d
+  constructor
+  · intro h
+    omega
+  · intro h
+    have h1 : 1 ≤ 2 ^ (d + 1) := Nat.one_le_two_pow
+    omega
+
+/-- A differing lift never lands on an odd bin: the two sides are incongruent mod 16. -/
+theorem oddBin_ne_differ (d B k : ℕ) (hk : k < 2 ^ d) (h8 : B % 8 = 4)
+    (hle : B + 4 ≤ 2 ^ (d + 3))
+    (hv : 2 ^ (d + 4) - 2 * B - 4 = 8 * (2 * k + 1) + 4) : False := by
+  have hB : B % 8 + 8 * (B / 8) = B := Nat.mod_add_div B 8
+  rw [h8] at hB
+  have hle2 : 2 * B + 4 ≤ 2 ^ (d + 4) := by
+    have h16 := pow_four d
+    omega
+  have hfold : 2 ^ (d + 4) - 2 * B - 4 = 2 ^ (d + 4) - (2 * B + 4) := by omega
+  rw [hfold] at hv
+  have heq : 2 ^ (d + 4) = 8 * (2 * k + 1) + 4 + (2 * B + 4) :=
+    (Nat.sub_eq_iff_eq_add hle2).mp hv
+  have h16 := pow_four d
+  omega
+
+/-- Agreeing lift, off the top bin: two copies of the bin, nothing from the degenerate pairs. -/
+theorem birthCount_agree (d k : ℕ) (hk : k < 2 ^ d) (htop : 2 * k + 1 ≠ 2 ^ (d + 1) - 1) :
+    birthCount (d + 4) (8 * (2 * k + 1) + 4) = 2 * birthCount (d + 3) (8 * k + 4) := by
+  classical
+  set v : ℕ := 8 * (2 * k + 1) + 4
+  have hmax : 2 ^ (d + 4) - 4 ≠ v := by
+    intro h
+    exact htop ((max_bin d (2 * k + 1) (by omega)).1 h)
+  have hLL : (∑ a : BUnit (d + 3), ∑ b : BUnit (d + 3),
+      hit v (BUnit.lower a) (BUnit.lower b)) = birthCount (d + 3) (8 * k + 4) := by
+    rw [birthCount_eq_sum]
+    refine Finset.sum_congr rfl (fun a _ => Finset.sum_congr rfl (fun b _ => ?_))
+    simp only [hit, birth_LL, lower_eq_bone_iff, ne_eq, lower_eq_lower_iff]
+    refine if_congr ?_ rfl rfl
+    constructor
+    · rintro ⟨ha, hb, hab, hv⟩
+      exact ⟨ha, hb, hab, by omega⟩
+    · rintro ⟨ha, hb, hab, hv⟩
+      exact ⟨ha, hb, hab, by omega⟩
+  have hUU : (∑ a : BUnit (d + 3), ∑ b : BUnit (d + 3),
+      hit v (BUnit.upper a) (BUnit.upper b)) = birthCount (d + 3) (8 * k + 4) := by
+    rw [birthCount_eq_sum]
+    refine Finset.sum_congr rfl (fun a _ => Finset.sum_congr rfl (fun b _ => ?_))
+    simp only [hit, birth_UU]
+    refine if_congr ?_ rfl rfl
+    constructor
+    · rintro ⟨-, -, hab, hv⟩
+      have hab' : a ≠ b := fun e => hab (by rw [e])
+      by_cases hbr : a = bone (d + 3) ∨ b = bone (d + 3)
+      · rw [if_pos hbr] at hv
+        exact absurd hv hmax
+      · push_neg at hbr
+        rw [if_neg (by simpa using hbr)] at hv
+        exact ⟨hbr.1, hbr.2, hab', by omega⟩
+    · rintro ⟨ha, hb, hab, hv⟩
+      refine ⟨upper_ne_bone a, upper_ne_bone b, fun e => hab (upper_eq_upper_iff.mp e), ?_⟩
+      have hbr : ¬ (a = bone (d + 3) ∨ b = bone (d + 3)) := by
+        push_neg
+        exact ⟨ha, hb⟩
+      rw [if_neg hbr]
+      omega
+  have hLU : (∑ a : BUnit (d + 3), ∑ b : BUnit (d + 3),
+      hit v (BUnit.lower a) (BUnit.upper b)) = 0 := by
+    refine Finset.sum_eq_zero (fun a _ => Finset.sum_eq_zero (fun b _ => ?_))
+    by_cases hp : BUnit.lower a ≠ bone (d + 4) ∧ BUnit.upper b ≠ bone (d + 4)
+        ∧ BUnit.lower a ≠ BUnit.upper b ∧ birth (BUnit.lower a) (BUnit.upper b) = v
+    · exfalso
+      have ha : a ≠ bone (d + 3) := lower_ne_bone hp.1
+      rw [birth_LU] at hp
+      by_cases hbr : b = bone (d + 3) ∨ b = a
+      · rw [if_pos hbr] at hp
+        exact hmax hp.2.2.2
+      · rw [if_neg hbr] at hp
+        push_neg at hbr
+        have hb : b ≠ bone (d + 3) := hbr.1
+        have hab : a ≠ b := fun e => hbr.2 e.symm
+        exact oddBin_ne_differ d (birth a b) k hk (birth_mod_eight a b ha hb hab)
+          (birth_props a b ha hb hab).2 hp.2.2.2
+    · rw [hit]
+      exact if_neg hp
+  have hUL : (∑ a : BUnit (d + 3), ∑ b : BUnit (d + 3),
+      hit v (BUnit.upper a) (BUnit.lower b)) = 0 := by
+    refine Finset.sum_eq_zero (fun a _ => Finset.sum_eq_zero (fun b _ => ?_))
+    by_cases hp : BUnit.upper a ≠ bone (d + 4) ∧ BUnit.lower b ≠ bone (d + 4)
+        ∧ BUnit.upper a ≠ BUnit.lower b ∧ birth (BUnit.upper a) (BUnit.lower b) = v
+    · exfalso
+      have hb : b ≠ bone (d + 3) := lower_ne_bone hp.2.1
+      rw [birth_UL] at hp
+      by_cases hbr : a = bone (d + 3) ∨ a = b
+      · rw [if_pos hbr] at hp
+        exact hmax hp.2.2.2
+      · rw [if_neg hbr] at hp
+        push_neg at hbr
+        have ha : a ≠ bone (d + 3) := hbr.1
+        have hab : a ≠ b := hbr.2
+        exact oddBin_ne_differ d (birth a b) k hk (birth_mod_eight a b ha hb hab)
+          (birth_props a b ha hb hab).2 hp.2.2.2
+    · rw [hit]
+      exact if_neg hp
+  rw [birthCount_quad, hLL, hLU, hUL, hUU]
+  ring
+
+/-- `B + 4 ≤ 2^(d+3)` doubles into `2B + 4 ≤ 2^(d+4)`. -/
+theorem twice_shift_le (d B : ℕ) (hbd : B + 4 ≤ 2 ^ (d + 3)) :
+    2 * B + 4 ≤ 2 ^ (d + 4) := by
+  have h8 : 8 ≤ 2 * 2 ^ (d + 3) := by
+    have : 1 ≤ 2 ^ d := Nat.one_le_two_pow
+    have hx : 2 ^ (d + 3) = 8 * 2 ^ d := by
+      rw [pow_add, mul_comm]
+      norm_num
+    omega
+  have hBle : B ≤ 2 ^ (d + 3) - 4 := Nat.le_sub_of_add_le hbd
+  have hmul : 2 * B ≤ 2 * (2 ^ (d + 3) - 4) := Nat.mul_le_mul_left 2 hBle
+  have hsum : 2 * B + 4 ≤ 2 * (2 ^ (d + 3) - 4) + 4 := Nat.add_le_add_right hmul 4
+  rw [Nat.mul_sub_left_distrib, show (2 * 4 : ℕ) = 8 by decide] at hsum
+  exact Nat.le_trans hsum (Nat.le_trans
+    (Nat.add_le_add_left (by decide : (4 : ℕ) ≤ 8) (2 * 2 ^ (d + 3) - 8))
+    (Nat.le_trans (Nat.le_of_eq (Nat.sub_add_cancel h8))
+      (Nat.le_of_eq ((mul_comm _ _).trans (pow_succ 2 (d + 3)).symm))))
+
+/-- A positive value cannot make `2^(d+4) − 2B − 4` land on the cap `2^(d+4) − 4`. -/
+theorem differ_ne_cap (d B : ℕ) (hB : B ≠ 0) (hbd : B + 4 ≤ 2 ^ (d + 3)) :
+    2 ^ (d + 4) - 2 * B - 4 ≠ 2 ^ (d + 4) - 4 := by
+  intro h
+  have h8 : 8 ≤ 2 * 2 ^ (d + 3) := by
+    have : 1 ≤ 2 ^ d := Nat.one_le_two_pow
+    have hx : 2 ^ (d + 3) = 8 * 2 ^ d := by
+      rw [pow_add, mul_comm]
+      norm_num
+    omega
+  have hle : 2 * B + 4 ≤ 2 ^ (d + 4) := by
+    have hBle : B ≤ 2 ^ (d + 3) - 4 := Nat.le_sub_of_add_le hbd
+    have hmul : 2 * B ≤ 2 * (2 ^ (d + 3) - 4) := Nat.mul_le_mul_left 2 hBle
+    have hsum : 2 * B + 4 ≤ 2 * (2 ^ (d + 3) - 4) + 4 := Nat.add_le_add_right hmul 4
+    rw [Nat.mul_sub_left_distrib, show (2 * 4 : ℕ) = 8 by decide] at hsum
+    exact Nat.le_trans hsum (Nat.le_trans
+      (Nat.add_le_add_left (by decide : (4 : ℕ) ≤ 8) (2 * 2 ^ (d + 3) - 8))
+      (Nat.le_trans (Nat.le_of_eq (Nat.sub_add_cancel h8))
+        (Nat.le_of_eq ((mul_comm _ _).trans (pow_succ 2 (d + 3)).symm))))
+  have h4le : 4 ≤ 2 ^ (d + 4) := by
+    rw [pow_four]
+    have : 1 ≤ 2 ^ d := Nat.one_le_two_pow
+    omega
+  rw [Nat.sub_sub] at h
+  have hL := (Nat.sub_eq_iff_eq_add hle).mp h
+  have hR := (Nat.sub_eq_iff_eq_add h4le).mp rfl
+  have hcancel := Nat.add_left_cancel (hL.symm.trans hR)
+  rw [show (4 : ℕ) = 0 + 4 from (Nat.zero_add 4).symm] at hcancel
+  rcases Nat.mul_eq_zero.mp (Nat.add_right_cancel hcancel) with h2 | hB0
+  · exact absurd h2 (by decide)
+  · exact hB hB0
+
+/-- The top bin: the two agreeing copies of the previous top bin, plus the degenerate pairs. -/
+theorem birthCount_top (d : ℕ) :
+    birthCount (d + 4) (2 ^ (d + 4) - 4) =
+      2 * birthCount (d + 3) (2 ^ (d + 3) - 4) + 6 * (2 ^ (d + 3) - 1) := by
+  classical
+  set v : ℕ := 2 ^ (d + 4) - 4
+  have hv0 : 2 * (2 ^ (d + 3) - 4) + 4 = v := by
+    change _ = 2 ^ (d + 4) - 4
+    have h8 : 8 ≤ 2 ^ (d + 4) := by
+      rw [pow_four]
+      have : 1 ≤ 2 ^ d := Nat.one_le_two_pow
+      omega
+    rw [Nat.mul_sub_left_distrib, show (2 * 4 : ℕ) = 8 by decide, mul_comm, ← pow_succ]
+    have hA : 2 ^ (d + 3 + 1) = 2 ^ (d + 4) := rfl
+    rw [hA]
+    have h4 : (4 : ℕ) ≤ 8 := by decide
+    apply Nat.add_right_cancel (m := 4)
+    rw [Nat.sub_add_cancel (Nat.le_trans h4 h8), ← Nat.sub_add_cancel h8, Nat.add_assoc]
+    exact congrArg (fun z => 2 ^ (d + 4) - 8 + z) (by decide : (4 + 4 : ℕ) = 8)
+  have hLL : (∑ a : BUnit (d + 3), ∑ b : BUnit (d + 3),
+      hit v (BUnit.lower a) (BUnit.lower b)) = birthCount (d + 3) (2 ^ (d + 3) - 4) := by
+    rw [birthCount_eq_sum]
+    refine Finset.sum_congr rfl (fun a _ => Finset.sum_congr rfl (fun b _ => ?_))
+    simp only [hit, birth_LL, lower_eq_bone_iff, ne_eq, lower_eq_lower_iff]
+    refine if_congr ?_ rfl rfl
+    constructor
+    · rintro ⟨ha, hb, hab, hv⟩
+      exact ⟨ha, hb, hab, by omega⟩
+    · rintro ⟨ha, hb, hab, hv⟩
+      exact ⟨ha, hb, hab, by omega⟩
+  have hUU : (∑ a : BUnit (d + 3), ∑ b : BUnit (d + 3),
+      hit v (BUnit.upper a) (BUnit.upper b))
+      = birthCount (d + 3) (2 ^ (d + 3) - 4) + 2 * (2 ^ (d + 3) - 1) := by
+    have hpt : ∀ a b : BUnit (d + 3),
+        hit v (BUnit.upper a) (BUnit.upper b)
+          = (if a ≠ bone (d + 3) ∧ b ≠ bone (d + 3) ∧ a ≠ b ∧ birth a b = 2 ^ (d + 3) - 4
+              then 1 else 0)
+            + (if a ≠ b ∧ (a = bone (d + 3) ∨ b = bone (d + 3)) then 1 else 0) := by
+      intro a b
+      by_cases hab : a = b
+      · subst hab
+        unfold hit
+        rw [if_neg (fun h => h.2.2.1 rfl), if_neg (fun h => h.2.2.1 rfl),
+          if_neg (fun h => h.1 rfl)]
+      · by_cases hbr : a = bone (d + 3) ∨ b = bone (d + 3)
+        · unfold hit
+          rw [birth_UU, if_pos hbr]
+          have hfr : (if a ≠ bone (d + 3) ∧ b ≠ bone (d + 3) ∧ a ≠ b ∧
+              birth a b = 2 ^ (d + 3) - 4 then 1 else 0) = 0 :=
+            if_neg (by
+              intro h
+              rcases hbr with ha | hb
+              · exact h.1 ha
+              · exact h.2.1 hb)
+          have hdeg : (if a ≠ b ∧ (a = bone (d + 3) ∨ b = bone (d + 3)) then 1 else 0) = 1 :=
+            if_pos ⟨hab, hbr⟩
+          rw [hfr, hdeg]
+          exact if_pos ⟨upper_ne_bone a, upper_ne_bone b,
+            fun e => hab (upper_eq_upper_iff.mp e), rfl⟩
+        · push_neg at hbr
+          have ha : a ≠ bone (d + 3) := hbr.1
+          have hb : b ≠ bone (d + 3) := hbr.2
+          have hbirth : birth (BUnit.upper a) (BUnit.upper b) = 2 * birth a b + 4 := by
+            rw [birth_UU, if_neg (fun h => h.elim ha hb)]
+          unfold hit
+          rw [hbirth]
+          have hdeg : (if a ≠ b ∧ (a = bone (d + 3) ∨ b = bone (d + 3)) then 1 else 0) = 0 :=
+            if_neg (fun h => h.2.elim ha hb)
+          rw [hdeg]
+          refine if_congr ?_ rfl rfl
+          constructor
+          · rintro ⟨_, _, _, hvb⟩
+            exact ⟨ha, hb, hab, (Nat.eq_of_mul_eq_mul_left (by decide : 0 < 2)
+              (Nat.add_right_cancel (hv0.trans hvb.symm))).symm⟩
+          · rintro ⟨_, _, _, hbth⟩
+            refine ⟨upper_ne_bone a, upper_ne_bone b,
+              fun e => hab (upper_eq_upper_iff.mp e), ?_⟩
+            rw [hbth]
+            exact hv0
+    simp_rw [hpt, Finset.sum_add_distrib]
+    have hfresh := (birthCount_eq_sum (d + 3) (2 ^ (d + 3) - 4)).symm
+    unfold hit at hfresh
+    rw [hfresh, count_max_UU]
+  have hLU : (∑ a : BUnit (d + 3), ∑ b : BUnit (d + 3),
+      hit v (BUnit.lower a) (BUnit.upper b)) = 2 * (2 ^ (d + 3) - 1) := by
+    have hpt : ∀ a b : BUnit (d + 3),
+        hit v (BUnit.lower a) (BUnit.upper b)
+          = if a ≠ bone (d + 3) ∧ (b = bone (d + 3) ∨ b = a) then 1 else 0 := by
+      intro a b
+      by_cases hbr : b = bone (d + 3) ∨ b = a
+      · unfold hit
+        rw [birth_LU, if_pos hbr]
+        refine if_congr ?_ rfl rfl
+        constructor
+        · rintro ⟨hl, _, _, _⟩
+          exact ⟨lower_ne_bone hl, hbr⟩
+        · rintro ⟨ha, _⟩
+          exact ⟨fun e => ha (lower_eq_bone_iff.mp e), upper_ne_bone b, lower_ne_upper' a b, rfl⟩
+      · push_neg at hbr
+        have hbirth : birth (BUnit.lower a) (BUnit.upper b)
+            = 2 ^ (d + 4) - 2 * birth a b - 4 := by
+          rw [birth_LU, if_neg (fun h => h.elim hbr.1 (fun he => hbr.2 he))]
+        rw [if_neg (fun h => h.2.elim hbr.1 (fun he => hbr.2 he))]
+        unfold hit
+        rw [hbirth]
+        refine if_neg ?_
+        intro hcond
+        have ha : a ≠ bone (d + 3) := lower_ne_bone hcond.1
+        exact differ_ne_cap d (birth a b) (birth_ne_zero a b ha hbr.1 (fun e => hbr.2 e.symm))
+          (birth_props a b ha hbr.1 (fun e => hbr.2 e.symm)).2 hcond.2.2.2
+    simp_rw [hpt]
+    exact count_max_row d
+  have hUL : (∑ a : BUnit (d + 3), ∑ b : BUnit (d + 3),
+      hit v (BUnit.upper a) (BUnit.lower b)) = 2 * (2 ^ (d + 3) - 1) := by
+    have hpt : ∀ a b : BUnit (d + 3),
+        hit v (BUnit.upper a) (BUnit.lower b)
+          = if b ≠ bone (d + 3) ∧ (a = bone (d + 3) ∨ a = b) then 1 else 0 := by
+      intro a b
+      by_cases hbr : a = bone (d + 3) ∨ a = b
+      · unfold hit
+        rw [birth_UL, if_pos hbr]
+        refine if_congr ?_ rfl rfl
+        constructor
+        · rintro ⟨_, hl, _, _⟩
+          exact ⟨lower_ne_bone hl, hbr⟩
+        · rintro ⟨hb, _⟩
+          exact ⟨upper_ne_bone a, fun e => hb (lower_eq_bone_iff.mp e), upper_ne_lower' a b, rfl⟩
+      · push_neg at hbr
+        have hbirth : birth (BUnit.upper a) (BUnit.lower b)
+            = 2 ^ (d + 4) - 2 * birth a b - 4 := by
+          rw [birth_UL, if_neg (fun h => h.elim hbr.1 hbr.2)]
+        rw [if_neg (fun h => h.2.elim hbr.1 hbr.2)]
+        unfold hit
+        rw [hbirth]
+        refine if_neg ?_
+        intro hcond
+        have hb : b ≠ bone (d + 3) := lower_ne_bone hcond.2.1
+        exact differ_ne_cap d (birth a b) (birth_ne_zero a b hbr.1 hb hbr.2)
+          (birth_props a b hbr.1 hb hbr.2).2 hcond.2.2.2
+    simp_rw [hpt]
+    exact count_max_col d
+  rw [birthCount_quad, hLL, hLU, hUL, hUU]
+  ring
+
+/-- Differing lift: two copies of the bin, on the even bin `2(2^d − 1 − k)`. -/
+theorem birthCount_differ (d k : ℕ) (hk : k < 2 ^ d) :
+    birthCount (d + 4) (8 * (2 * (2 ^ d - 1 - k)) + 4) = 2 * birthCount (d + 3) (8 * k + 4) := by
+  classical
+  set v : ℕ := 8 * (2 * (2 ^ d - 1 - k)) + 4
+  have h1 : (1 : ℕ) ≤ 2 ^ d := Nat.one_le_two_pow
+  have hkle : k ≤ 2 ^ d - 1 := Nat.le_sub_of_add_le hk
+  have h16le : 16 * k + 12 ≤ 16 * 2 ^ d := by
+    have hmul : 16 * k ≤ 16 * (2 ^ d - 1) := Nat.mul_le_mul_left 16 hkle
+    have hsum : 16 * k + 12 ≤ 16 * (2 ^ d - 1) + 12 := Nat.add_le_add_right hmul 12
+    rw [Nat.mul_sub_left_distrib] at hsum
+    have h16 : 16 ≤ 16 * 2 ^ d := Nat.mul_le_mul_left 16 h1
+    exact Nat.le_trans hsum (Nat.le_trans
+      (Nat.add_le_add_left (by decide : (12 : ℕ) ≤ 16) (16 * 2 ^ d - 16))
+      (Nat.le_of_eq (Nat.sub_add_cancel h16)))
+  have hdiff : ∀ {B : ℕ}, B = 8 * k + 4 → 2 ^ (d + 4) - 2 * B - 4 = v := by
+    intro B hB
+    subst hB
+    change 2 ^ (d + 4) - 2 * (8 * k + 4) - 4 = 8 * (2 * (2 ^ d - 1 - k)) + 4
+    have hcoe : 2 * (8 * k + 4) + 4 = 16 * k + 12 := by ring
+    rw [pow_four, Nat.sub_sub, hcoe]
+    apply (Nat.sub_eq_iff_eq_add h16le).mpr
+    have hrestore : 2 ^ d - 1 - k + k = 2 ^ d - 1 := Nat.sub_add_cancel hkle
+    have hx : 8 * (2 * (2 ^ d - 1 - k)) = 16 * (2 ^ d - 1 - k) := by ring
+    rw [hx]
+    have hregroup : 16 * (2 ^ d - 1 - k) + 4 + (16 * k + 12)
+        = 16 * (2 ^ d - 1 - k) + 16 * k + 16 := by ring
+    rw [hregroup]
+    have hsum : 16 * (2 ^ d - 1 - k) + 16 * k = 16 * (2 ^ d - 1 - k + k) :=
+      (Nat.mul_add 16 _ _).symm
+    rw [hsum, hrestore]
+    exact ((Nat.mul_succ 16 (2 ^ d - 1)).symm.trans
+      (congrArg (fun z => 16 * z) (Nat.sub_add_cancel h1))).symm
+  have hnot : ∀ {B : ℕ}, 2 * B + 4 ≤ 2 ^ (d + 4) →
+      2 ^ (d + 4) - 2 * B - 4 = v → B = 8 * k + 4 := by
+    intro B hle hvB
+    have hv0 := hdiff (B := 8 * k + 4) rfl
+    have hle0 : 2 * (8 * k + 4) + 4 ≤ 2 ^ (d + 4) := by
+      have hcoe : 2 * (8 * k + 4) + 4 = 16 * k + 12 := by ring
+      rw [pow_four, hcoe]
+      exact h16le
+    rw [Nat.sub_sub] at hvB
+    rw [Nat.sub_sub] at hv0
+    have h1e := (Nat.sub_eq_iff_eq_add hle).mp hvB
+    have h2e := (Nat.sub_eq_iff_eq_add hle0).mp hv0
+    exact Nat.eq_of_mul_eq_mul_left (by decide : 0 < 2)
+      (Nat.add_right_cancel (Nat.add_left_cancel (h1e.symm.trans h2e)))
+  have hmax : 2 ^ (d + 4) - 4 ≠ v := by
+    intro h
+    have h4le : 4 ≤ 2 ^ (d + 4) := by
+      rw [pow_four]
+      exact Nat.le_trans (by decide : (4 : ℕ) ≤ 16) (Nat.mul_le_mul_left 16 h1)
+    have heq := (Nat.sub_eq_iff_eq_add h4le).mp h
+    have hlt : v + 12 ≤ 2 ^ (d + 4) := by
+      change 8 * (2 * (2 ^ d - 1 - k)) + 4 + 12 ≤ 2 ^ (d + 4)
+      have hsum : 8 * (2 * (2 ^ d - 1 - k)) + 4 + 12 = 16 * (2 ^ d - 1 - k) + 16 := by ring
+      rw [hsum, pow_four]
+      have hmul : 16 * (2 ^ d - 1 - k) ≤ 16 * (2 ^ d - 1) :=
+        Nat.mul_le_mul_left 16 (Nat.sub_le (2 ^ d - 1) k)
+      have hadd := Nat.add_le_add_right hmul 16
+      have hr : 16 * (2 ^ d - 1) + 16 = 16 * 2 ^ d :=
+        (Nat.mul_succ 16 (2 ^ d - 1)).symm.trans
+          (congrArg (fun z => 16 * z) (Nat.sub_add_cancel h1))
+      exact Nat.le_trans hadd (Nat.le_of_eq hr)
+    rw [heq] at hlt
+    exact absurd (Nat.le_of_add_le_add_left hlt) (by decide)
+  have hagree : ∀ {B : ℕ}, B % 8 = 4 → 2 * B + 4 ≠ v := by
+    intro B h8 heq
+    have hsplit : B = 8 * (B / 8) + 4 := by
+      have hdiv := (Nat.div_add_mod B 8).symm
+      rwa [h8] at hdiv
+    rw [hsplit] at heq
+    have hl : 2 * (8 * (B / 8) + 4) + 4 = 16 * (B / 8) + 12 := by ring
+    rw [hl] at heq
+    have hL : (16 * (B / 8) + 12) % 16 = 12 := by
+      rw [Nat.add_mod, Nat.mod_eq_zero_of_dvd (Nat.dvd_mul_right 16 (B / 8)),
+        Nat.zero_add, Nat.mod_mod, Nat.mod_eq_of_lt (by decide : 12 < 16)]
+    have hvmod : v % 16 = 4 := by
+      change (8 * (2 * (2 ^ d - 1 - k)) + 4) % 16 = 4
+      have h16v : 8 * (2 * (2 ^ d - 1 - k)) = 16 * (2 ^ d - 1 - k) := by ring
+      rw [h16v, Nat.add_mod, Nat.mod_eq_zero_of_dvd (Nat.dvd_mul_right 16 _),
+        Nat.zero_add, Nat.mod_mod, Nat.mod_eq_of_lt (by decide : 4 < 16)]
+    exact absurd (hL.symm.trans (heq ▸ hvmod)) (by decide)
+  have hLL : (∑ a : BUnit (d + 3), ∑ b : BUnit (d + 3),
+      hit v (BUnit.lower a) (BUnit.lower b)) = 0 := by
+    refine Finset.sum_eq_zero (fun a _ => Finset.sum_eq_zero (fun b _ => ?_))
+    simp only [hit, birth_LL, lower_eq_bone_iff, ne_eq, lower_eq_lower_iff]
+    by_cases hp : a ≠ bone (d + 3) ∧ b ≠ bone (d + 3) ∧ a ≠ b ∧ 2 * birth a b + 4 = v
+    · exact absurd hp.2.2.2 (hagree (birth_mod_eight a b hp.1 hp.2.1 hp.2.2.1))
+    · exact if_neg hp
+  have hUU : (∑ a : BUnit (d + 3), ∑ b : BUnit (d + 3),
+      hit v (BUnit.upper a) (BUnit.upper b)) = 0 := by
+    refine Finset.sum_eq_zero (fun a _ => Finset.sum_eq_zero (fun b _ => ?_))
+    by_cases hab : a = b
+    · subst hab
+      unfold hit
+      exact if_neg (fun h => h.2.2.1 (upper_eq_upper_iff.mpr rfl))
+    · by_cases hbr : a = bone (d + 3) ∨ b = bone (d + 3)
+      · have hbirth : birth (BUnit.upper a) (BUnit.upper b) = 2 ^ (d + 4) - 4 := by
+          rw [birth_UU, if_pos hbr]
+        unfold hit
+        rw [hbirth]
+        exact if_neg (fun h => hmax h.2.2.2)
+      · push_neg at hbr
+        have hbirth : birth (BUnit.upper a) (BUnit.upper b) = 2 * birth a b + 4 := by
+          rw [birth_UU, if_neg (fun h => h.elim hbr.1 hbr.2)]
+        unfold hit
+        rw [hbirth]
+        exact if_neg (fun h => hagree (birth_mod_eight a b hbr.1 hbr.2 hab) h.2.2.2)
+  have hLU : (∑ a : BUnit (d + 3), ∑ b : BUnit (d + 3),
+      hit v (BUnit.lower a) (BUnit.upper b)) = birthCount (d + 3) (8 * k + 4) := by
+    rw [birthCount_eq_sum]
+    refine Finset.sum_congr rfl (fun a _ => Finset.sum_congr rfl (fun b _ => ?_))
+    simp only [hit, birth_LU]
+    refine if_congr ?_ rfl rfl
+    constructor
+    · rintro ⟨hl, -, -, hv⟩
+      have ha : a ≠ bone (d + 3) := lower_ne_bone hl
+      by_cases hbr : b = bone (d + 3) ∨ b = a
+      · rw [if_pos hbr] at hv
+        exact absurd hv hmax
+      · push_neg at hbr
+        rw [if_neg (by simpa using hbr)] at hv
+        have hle : 2 * birth a b + 4 ≤ 2 ^ (d + 4) :=
+          twice_shift_le d (birth a b) (birth_props a b ha hbr.1 (fun e => hbr.2 e.symm)).2
+        exact ⟨ha, hbr.1, fun e => hbr.2 e.symm, hnot hle hv⟩
+    · rintro ⟨ha, hb, hab, hv⟩
+      have hbr : ¬ (b = bone (d + 3) ∨ b = a) := by
+        push_neg
+        exact ⟨hb, fun e => hab e.symm⟩
+      refine ⟨fun e => ha (lower_eq_bone_iff.mp e), upper_ne_bone b, lower_ne_upper' a b, ?_⟩
+      rw [if_neg hbr]
+      exact hdiff hv
+  have hUL : (∑ a : BUnit (d + 3), ∑ b : BUnit (d + 3),
+      hit v (BUnit.upper a) (BUnit.lower b)) = birthCount (d + 3) (8 * k + 4) := by
+    rw [birthCount_eq_sum]
+    refine Finset.sum_congr rfl (fun a _ => Finset.sum_congr rfl (fun b _ => ?_))
+    simp only [hit, birth_UL]
+    refine if_congr ?_ rfl rfl
+    constructor
+    · rintro ⟨-, hl, -, hv⟩
+      have hb : b ≠ bone (d + 3) := lower_ne_bone hl
+      by_cases hbr : a = bone (d + 3) ∨ a = b
+      · rw [if_pos hbr] at hv
+        exact absurd hv hmax
+      · push_neg at hbr
+        rw [if_neg (by simpa using hbr)] at hv
+        have hle : 2 * birth a b + 4 ≤ 2 ^ (d + 4) :=
+          twice_shift_le d (birth a b) (birth_props a b hbr.1 hb hbr.2).2
+        exact ⟨hbr.1, hb, hbr.2, hnot hle hv⟩
+    · rintro ⟨ha, hb, hab, hv⟩
+      have hbr : ¬ (a = bone (d + 3) ∨ a = b) := by
+        push_neg
+        exact ⟨ha, hab⟩
+      refine ⟨upper_ne_bone a, fun e => hb (lower_eq_bone_iff.mp e), upper_ne_lower' a b, ?_⟩
+      rw [if_neg hbr]
+      exact hdiff hv
+  rw [birthCount_quad, hLL, hLU, hUL, hUU]
+  ring
+
+/-! ### The closed form obeys the same recurrence -/
+
+theorem plateau_double (n : ℕ) (hn : 3 ≤ n) :
+    21 * 2 ^ ((n + 1) - 3) = 2 * (21 * 2 ^ (n - 3)) := by
+  have h : (n + 1) - 3 = (n - 3) + 1 := by omega
+  rw [h, pow_succ]
+  ring
+
+theorem shell_coe_double (a b : ℕ) :
+    3 * (2 ^ a * 2) * (2 ^ b - 1) = 2 * (3 * 2 ^ a * (2 ^ b - 1)) := by
+  generalize 2 ^ b - 1 = z
+  ring
+
+theorem shellTerm_double_odd (n j t : ℕ) (hn : 5 ≤ n) (hj : 3 ≤ j) (hj' : j ≤ n - 2)
+    (ht : t < 2 ^ (n - 3)) :
+    shellTerm (n + 1) j (2 * t + 1) = 2 * shellTerm n j t := by
+  unfold shellTerm
+  have hs : (n + 1) - 2 - j = (n - 2 - j) + 1 := by omega
+  have h3 : (n + 1) - 3 = (n - 3) + 1 := by omega
+  have hc : (n + 1) - j - 1 = (n - j - 1) + 1 := by omega
+  rw [hs, h3, hc, pow_succ, pow_succ, pow_succ]
+  by_cases hC : t < 2 ^ (n - 2 - j) ∨ 2 ^ (n - 3) ≤ t + 2 ^ (n - 2 - j)
+  · have hC' : 2 * t + 1 < 2 ^ (n - 2 - j) * 2
+        ∨ 2 ^ (n - 3) * 2 ≤ 2 * t + 1 + 2 ^ (n - 2 - j) * 2 := by
+      rcases hC with h | h
+      · left
+        have hsucc : t + 1 ≤ 2 ^ (n - 2 - j) := Nat.succ_le_of_lt h
+        have hmul : 2 * t + 2 ≤ 2 * 2 ^ (n - 2 - j) := Nat.mul_le_mul_left 2 hsucc
+        have hlt : 2 * t + 1 < 2 * 2 ^ (n - 2 - j) := by omega
+        rw [Nat.mul_comm 2 (2 ^ (n - 2 - j))] at hlt
+        exact hlt
+      · right
+        have hmul : 2 * 2 ^ (n - 3) ≤ 2 * t + 2 * 2 ^ (n - 2 - j) := by
+          rw [← Nat.mul_add]
+          exact Nat.mul_le_mul_left 2 h
+        have hstep : 2 * t + 2 * 2 ^ (n - 2 - j) ≤ 2 * t + 1 + 2 * 2 ^ (n - 2 - j) := by
+          omega
+        have hle := Nat.le_trans hmul hstep
+        rw [Nat.mul_comm 2 (2 ^ (n - 3)), Nat.mul_comm 2 (2 ^ (n - 2 - j))] at hle
+        exact hle
+    simp only [hC, hC', ite_true]
+    exact shell_coe_double (n - j - 1) j
+  · push_neg at hC
+    have hC' : ¬ (2 * t + 1 < 2 ^ (n - 2 - j) * 2
+        ∨ 2 ^ (n - 3) * 2 ≤ 2 * t + 1 + 2 ^ (n - 2 - j) * 2) := by
+      push_neg
+      constructor
+      · have hge : 2 * 2 ^ (n - 2 - j) ≤ 2 * t := Nat.mul_le_mul_left 2 hC.1
+        have hge' : 2 * 2 ^ (n - 2 - j) ≤ 2 * t + 1 := Nat.le_trans hge (Nat.le_succ _)
+        rwa [Nat.mul_comm 2 (2 ^ (n - 2 - j))] at hge'
+      · have hlt : 2 * (t + 2 ^ (n - 2 - j)) < 2 * 2 ^ (n - 3) :=
+          Nat.mul_lt_mul_of_pos_left hC.2 (by decide : 0 < 2)
+        rw [Nat.mul_add] at hlt
+        have hle' : 2 * t + 2 * 2 ^ (n - 2 - j) + 1 ≤ 2 * 2 ^ (n - 3) := by
+          simpa [Nat.add_assoc] using Nat.succ_le_of_lt hlt
+        have hne : 2 * t + 2 * 2 ^ (n - 2 - j) + 1 ≠ 2 * 2 ^ (n - 3) := by
+          intro heq
+          have hl : Even (2 * t + 2 * 2 ^ (n - 2 - j)) := by
+            rw [← Nat.mul_add]
+            exact even_two_mul _
+          have hr : Even (2 * 2 ^ (n - 3)) := even_two_mul _
+          exact (Nat.even_add_one.mp (heq ▸ hr)) hl
+        have hstrict : 2 * t + 1 + 2 * 2 ^ (n - 2 - j) < 2 * 2 ^ (n - 3) := by
+          have h0 := Nat.lt_of_le_of_ne hle' hne
+          rwa [show 2 * t + 2 * 2 ^ (n - 2 - j) + 1 = 2 * t + 1 + 2 * 2 ^ (n - 2 - j) by ring]
+            at h0
+        rw [Nat.mul_comm 2 (2 ^ (n - 3)), Nat.mul_comm 2 (2 ^ (n - 2 - j))] at hstrict
+        exact hstrict
+    have hCneg : ¬ (t < 2 ^ (n - 2 - j) ∨ 2 ^ (n - 3) ≤ t + 2 ^ (n - 2 - j)) := by
+      push_neg
+      exact hC
+    simp only [hCneg, hC', ite_false]
+
+theorem shellTerm_double_even (n j t : ℕ) (hn : 5 ≤ n) (hj : 3 ≤ j) (hj' : j ≤ n - 2)
+    (ht : t < 2 ^ (n - 3)) :
+    shellTerm (n + 1) j (2 * (2 ^ (n - 3) - 1 - t)) = 2 * shellTerm n j t := by
+  unfold shellTerm
+  have hs : (n + 1) - 2 - j = (n - 2 - j) + 1 := by omega
+  have h3 : (n + 1) - 3 = (n - 3) + 1 := by omega
+  have hc : (n + 1) - j - 1 = (n - j - 1) + 1 := by omega
+  have ht' : t ≤ 2 ^ (n - 3) - 1 := Nat.le_sub_of_add_le (Nat.succ_le_of_lt ht)
+  rw [hs, h3, hc, pow_succ, pow_succ, pow_succ]
+  set N : ℕ := 2 ^ (n - 3)
+  set w : ℕ := 2 ^ (n - 2 - j)
+  have hw : w ≤ N := by
+    have hexp : n - 2 - j ≤ n - 3 := by omega
+    simpa [N, w] using Nat.pow_le_pow_right (by decide : 0 < 2) hexp
+  by_cases hC : t < w ∨ N ≤ t + w
+  · have hC' : 2 * (N - 1 - t) < w * 2
+        ∨ N * 2 ≤ 2 * (N - 1 - t) + w * 2 := by
+      rcases hC with h | h
+      · right
+        have hsucc : t + 1 ≤ w := Nat.succ_le_of_lt h
+        have h1t : 1 + t ≤ w := by rwa [Nat.add_comm] at hsucc
+        have hgap : N - w ≤ N - (t + 1) := by
+          rw [Nat.add_comm t 1]
+          exact Nat.sub_le_sub_left h1t N
+        have hsub : N - (t + 1) = N - 1 - t := by
+          rw [Nat.add_comm]
+          exact (Nat.sub_sub N 1 t).symm
+        have hmul : 2 * (N - w) ≤ 2 * (N - 1 - t) := by
+          rw [← hsub]
+          exact Nat.mul_le_mul_left 2 hgap
+        have hcancel : 2 * (N - w) + 2 * w = 2 * N := by
+          rw [← Nat.mul_add, Nat.sub_add_cancel hw]
+        have hge : 2 * N ≤ 2 * (N - 1 - t) + 2 * w := by
+          rw [← hcancel]
+          exact Nat.add_le_add_right hmul _
+        rw [Nat.mul_comm 2 N, Nat.mul_comm 2 w] at hge
+        exact hge
+      · left
+        have hsuble : N - t ≤ w := Nat.sub_le_of_le_add (by rwa [Nat.add_comm] at h)
+        have hone : 1 ≤ N - t := by
+          have h1 : 1 ≤ N := Nat.one_le_two_pow
+          have hN : t + 1 ≤ N := by
+            have hstep := Nat.add_le_add_right ht' 1
+            rwa [Nat.sub_add_cancel h1] at hstep
+          exact Nat.le_sub_of_add_le (by rwa [Nat.add_comm] at hN)
+        have hpred : N - 1 - t ≤ w - 1 := by
+          rw [Nat.sub_sub, Nat.add_comm]
+          exact Nat.sub_le_sub_right hsuble 1
+        have hmul : 2 * (N - 1 - t) ≤ 2 * (w - 1) := Nat.mul_le_mul_left 2 hpred
+        have hw1 : 1 ≤ w := Nat.le_trans hone hsuble
+        have h2 : 2 * (w - 1) + 2 = 2 * w := by
+          rw [Nat.mul_sub_left_distrib, show (2 * 1 : ℕ) = 2 by decide,
+            Nat.sub_add_cancel (Nat.mul_le_mul_left 2 hw1)]
+        have hlt : 2 * (N - 1 - t) < 2 * w := by
+          have hle2 : 2 * (N - 1 - t) + 2 ≤ 2 * w := by
+            rw [← h2]
+            exact Nat.add_le_add_right hmul 2
+          omega
+        rw [Nat.mul_comm 2 w] at hlt
+        exact hlt
+    simp only [hC, hC', ite_true, N, w]
+    exact shell_coe_double (n - j - 1) j
+  · have hCneg : ¬ (t < w ∨ N ≤ t + w) := hC
+    push_neg at hC
+    have hC' : ¬ (2 * (N - 1 - t) < w * 2 ∨ N * 2 ≤ 2 * (N - 1 - t) + w * 2) := by
+      push_neg
+      constructor
+      · have hle : w ≤ N - 1 - t := by
+          have hs' : w + (t + 1) ≤ N := by
+            have hs := Nat.succ_le_of_lt hC.2
+            rw [Nat.add_comm t w, Nat.succ_eq_add_one, Nat.add_assoc] at hs
+            exact hs
+          rw [Nat.sub_sub, Nat.add_comm]
+          exact Nat.le_sub_of_add_le hs'
+        have hmul : 2 * w ≤ 2 * (N - 1 - t) := Nat.mul_le_mul_left 2 hle
+        rwa [Nat.mul_comm 2 w] at hmul
+      · have hle2 : N - 1 - t + w ≤ N - 1 := by
+          have hrestore : N - 1 - t + t = N - 1 :=
+            Nat.sub_add_cancel (Nat.le_sub_of_add_le (Nat.succ_le_of_lt ht))
+          exact Nat.le_trans (Nat.add_le_add_left hC.1 _) (Nat.le_of_eq hrestore)
+        have hmul := Nat.mul_le_mul_left 2 hle2
+        have h1N : 1 ≤ N := Nat.one_le_two_pow
+        have h2 : 2 * (N - 1) + 2 = 2 * N := by
+          rw [Nat.mul_sub_left_distrib, show (2 * 1 : ℕ) = 2 by decide,
+            Nat.sub_add_cancel (Nat.mul_le_mul_left 2 h1N)]
+        have hlt : 2 * (N - 1 - t + w) < 2 * N := by
+          have hle3 : 2 * (N - 1 - t + w) + 2 ≤ 2 * N := by
+            rw [← h2]
+            exact Nat.add_le_add_right hmul 2
+          omega
+        rw [Nat.mul_add] at hlt
+        rw [Nat.mul_comm 2 N, Nat.mul_comm 2 w] at hlt
+        exact hlt
+    simp only [hCneg, hC', ite_false]
+
+theorem shellTerm_new (n k : ℕ) (hn : 4 ≤ n) (hk : k < 2 ^ (n - 2)) :
+    shellTerm (n + 1) (n - 1) k =
+      if k = 0 ∨ k = 2 ^ (n - 2) - 1 then 6 * (2 ^ (n - 1) - 1) else 0 := by
+  unfold shellTerm
+  have h0 : (n + 1) - 2 - (n - 1) = 0 := by omega
+  have h2 : (n + 1) - 3 = n - 2 := by omega
+  have h1e : (n + 1) - (n - 1) - 1 = 1 := by omega
+  rw [h0, h2, h1e]
+  have hcoe : 3 * 2 ^ 1 * (2 ^ (n - 1) - 1) = 6 * (2 ^ (n - 1) - 1) := by
+    generalize 2 ^ (n - 1) - 1 = z
+    norm_num
+  have hone : 1 ≤ 2 ^ (n - 2) := Nat.one_le_two_pow
+  have hiff : (k < 2 ^ 0 ∨ 2 ^ (n - 2) ≤ k + 2 ^ 0) ↔ (k = 0 ∨ k = 2 ^ (n - 2) - 1) := by
+    constructor
+    · intro h
+      rcases h with h | h
+      · left
+        exact Nat.lt_one_iff.mp (by simpa using h)
+      · right
+        have heq : 2 ^ (n - 2) = k + 1 :=
+          (Nat.le_antisymm (Nat.succ_le_of_lt hk) (by simpa using h)).symm
+        exact ((Nat.sub_eq_iff_eq_add hone).mpr heq).symm
+    · intro h
+      rcases h with h | h
+      · subst h
+        left
+        decide
+      · right
+        rw [h]
+        exact Nat.le_of_eq (Nat.sub_add_cancel hone).symm
+  rw [hcoe]
+  exact if_congr hiff rfl rfl
+
+theorem range_shells (n : ℕ) (hn : 4 ≤ n) :
+    List.range ((n + 1) - 4) = List.range (n - 4) ++ [n - 4] := by
+  have h : (n + 1) - 4 = (n - 4) + 1 := by omega
+  rw [h, List.range_succ]
+
+theorem map_on {α β : Type} (l : List α) (f g : α → β) (h : ∀ a ∈ l, f a = g a) :
+    l.map f = l.map g := by
+  induction l with
+  | nil => rfl
+  | cons a l ih =>
+    simp only [List.map_cons]
+    exact congr (congrArg List.cons (h a (by simp))) (ih fun x hx => h x (List.mem_cons.2 (Or.inr hx)))
+
+theorem list_sum_two {α : Type} (l : List α) (f : α → ℕ) :
+    (l.map fun i => 2 * f i).sum = 2 * (l.map f).sum := by
+  induction l with
+  | nil => simp
+  | cons a l ih =>
+    simp only [List.map_cons, List.sum_cons, ih]
+    omega
+
+theorem shells_double_odd (n t : ℕ) (hn : 4 ≤ n) (ht : t < 2 ^ (n - 3)) :
+    ((List.range (n - 4)).map fun i => shellTerm (n + 1) (i + 3) (2 * t + 1)).sum
+      = 2 * ((List.range (n - 4)).map fun i => shellTerm n (i + 3) t).sum := by
+  have h : (List.range (n - 4)).map (fun i => shellTerm (n + 1) (i + 3) (2 * t + 1))
+      = (List.range (n - 4)).map (fun i => 2 * shellTerm n (i + 3) t) := by
+    refine map_on _ _ _ fun i hi => ?_
+    rw [List.mem_range] at hi
+    have hn5 : 5 ≤ n := by omega
+    exact shellTerm_double_odd n (i + 3) t hn5 (by omega) (by omega) ht
+  rw [h, list_sum_two]
+
+theorem shells_double_even (n t : ℕ) (hn : 4 ≤ n) (ht : t < 2 ^ (n - 3)) :
+    ((List.range (n - 4)).map fun i =>
+        shellTerm (n + 1) (i + 3) (2 * (2 ^ (n - 3) - 1 - t))).sum
+      = 2 * ((List.range (n - 4)).map fun i => shellTerm n (i + 3) t).sum := by
+  have h : (List.range (n - 4)).map (fun i =>
+        shellTerm (n + 1) (i + 3) (2 * (2 ^ (n - 3) - 1 - t)))
+      = (List.range (n - 4)).map (fun i => 2 * shellTerm n (i + 3) t) := by
+    refine map_on _ _ _ fun i hi => ?_
+    rw [List.mem_range] at hi
+    have hn5 : 5 ≤ n := by omega
+    exact shellTerm_double_even n (i + 3) t hn5 (by omega) (by omega) ht
+  rw [h, list_sum_two]
+
+theorem pred_double (m : ℕ) (hm : 1 ≤ m) :
+    2 * (2 ^ (m - 1) - 1) + 1 = 2 ^ m - 1 := by
+  have h1 : 1 ≤ 2 ^ (m - 1) := Nat.one_le_two_pow
+  have h2 : 2 ≤ 2 * 2 ^ (m - 1) := Nat.mul_le_mul_left 2 h1
+  have hs : 2 ^ m = 2 * 2 ^ (m - 1) := by
+    have hm' : m = (m - 1) + 1 := by omega
+    conv_lhs => rw [hm']
+    rw [pow_succ, Nat.mul_comm]
+  rw [Nat.mul_sub_left_distrib, show (2 * 1 : ℕ) = 2 by decide, hs]
+  apply Eq.symm
+  apply Nat.add_right_cancel (m := 1)
+  rw [Nat.sub_add_cancel (Nat.le_trans (by decide : (1 : ℕ) ≤ 2) h2),
+    show 2 * 2 ^ (m - 1) - 2 + 1 + 1 = 2 * 2 ^ (m - 1) - 2 + 2 by ring,
+    Nat.sub_add_cancel h2]
+
+theorem birthSpectrum_agree (n k : ℕ) (hn : 3 ≤ n) (hk : k < 2 ^ (n - 3))
+    (htop : 2 * k + 1 ≠ 2 ^ (n - 2) - 1) :
+    birthSpectrum (n + 1) (2 * k + 1) = 2 * birthSpectrum n k := by
+  unfold birthSpectrum
+  have hn4 : 4 ≤ n := by
+    by_contra h
+    have hn3 : n = 3 := by omega
+    subst hn3
+    have hk0 : k = 0 := by
+      have : k < 2 ^ 0 := by simpa using hk
+      exact Nat.lt_one_iff.mp this
+    exact htop (by simp [hk0])
+  rw [range_shells n hn4, List.map_append, List.sum_append, List.map_singleton, List.sum_singleton]
+  have hpre : k = 2 ^ (n - 3) - 1 → False := by
+    intro hk1
+    apply htop
+    have hexp : (n - 2) - 1 = n - 3 := by omega
+    rw [hk1, ← hexp]
+    exact pred_double (n - 2) (by omega)
+  have hcapN : capTerm n k = 0 := by
+    unfold capTerm
+    rw [if_neg (by
+      intro h
+      exact hpre (((Nat.sub_eq_iff_eq_add Nat.one_le_two_pow).mpr h.2.symm).symm))]
+  have hcap : capTerm (n + 1) (2 * k + 1) = 0 := by
+    unfold capTerm
+    rw [if_neg (by
+      intro h
+      have hexp : (n + 1) - 3 = n - 2 := by omega
+      have heq : 2 * (k + 1) = 2 ^ (n - 2) := by
+        have h2 := h.2
+        rw [hexp] at h2
+        have : 2 * k + 1 + 1 = 2 * (k + 1) := by ring
+        rwa [this] at h2
+      have hs : 2 ^ (n - 2) = 2 * 2 ^ (n - 3) := by
+        have : n - 2 = (n - 3) + 1 := by omega
+        rw [this, pow_succ, Nat.mul_comm]
+      have hk1 : k + 1 = 2 ^ (n - 3) :=
+        Nat.eq_of_mul_eq_mul_left (by decide : 0 < 2) (heq.trans hs)
+      exact hpre (((Nat.sub_eq_iff_eq_add Nat.one_le_two_pow).mpr hk1.symm).symm))]
+  have hnew : shellTerm (n + 1) ((n - 4) + 3) (2 * k + 1) = 0 := by
+    have hj : (n - 4) + 3 = n - 1 := by omega
+    have hlt : 2 * k + 1 < 2 ^ (n - 2) := by
+      have hs : 2 ^ (n - 2) = 2 * 2 ^ (n - 3) := by
+        have : n - 2 = (n - 3) + 1 := by omega
+        rw [this, pow_succ, Nat.mul_comm]
+      rw [hs]
+      have hmul : 2 * (k + 1) ≤ 2 * 2 ^ (n - 3) := Nat.mul_le_mul_left 2 (Nat.succ_le_of_lt hk)
+      have : 2 * k + 2 = 2 * (k + 1) := by ring
+      omega
+    rw [hj, shellTerm_new n (2 * k + 1) hn4 hlt, if_neg (by
+      push_neg
+      exact ⟨Nat.succ_ne_zero (2 * k), htop⟩)]
+  rw [shells_double_odd n k hn4 hk, hnew, hcap, hcapN, plateau_double n hn]
+  ring
+
+theorem birthSpectrum_top (n : ℕ) (hn : 3 ≤ n) :
+    birthSpectrum (n + 1) (2 ^ (n - 2) - 1) =
+      2 * birthSpectrum n (2 ^ (n - 3) - 1) + 3 * (2 ^ n - 1) := by
+  by_cases hn4 : 4 ≤ n
+  · have hpos : 0 < 2 ^ (n - 3) :=
+      Nat.lt_of_lt_of_le (by decide : (0 : ℕ) < 1) Nat.one_le_two_pow
+    have ht : 2 ^ (n - 3) - 1 < 2 ^ (n - 3) := Nat.sub_lt hpos (by decide : (0 : ℕ) < 1)
+    have hexp : (n - 2) - 1 = n - 3 := by omega
+    have h12 : 1 ≤ n - 2 := by omega
+    have hodd : 2 * (2 ^ (n - 3) - 1) + 1 = 2 ^ (n - 2) - 1 := by
+      have h := pred_double (n - 2) h12
+      rw [hexp] at h
+      exact h
+    have hpos2 : 0 < 2 ^ (n - 2) :=
+      Nat.lt_of_lt_of_le (by decide : (0 : ℕ) < 1) Nat.one_le_two_pow
+    have hlt : 2 * (2 ^ (n - 3) - 1) + 1 < 2 ^ (n - 2) := by
+      rw [hodd]
+      exact Nat.sub_lt hpos2 (by decide : (0 : ℕ) < 1)
+    unfold birthSpectrum
+    rw [← hodd]
+    rw [range_shells n hn4, List.map_append, List.sum_append, List.map_singleton, List.sum_singleton]
+    have hnew : shellTerm (n + 1) ((n - 4) + 3) (2 * (2 ^ (n - 3) - 1) + 1)
+        = 6 * (2 ^ (n - 1) - 1) := by
+      have hj : (n - 4) + 3 = n - 1 := by omega
+      rw [hj, shellTerm_new n _ hn4 hlt, if_pos (Or.inr hodd)]
+    have hcap : capTerm (n + 1) (2 * (2 ^ (n - 3) - 1) + 1) = 3 * (2 ^ n - 1) := by
+      unfold capTerm
+      have hexp1 : (n + 1) - 3 = n - 2 := by omega
+      have hc : 4 ≤ n + 1 ∧ 2 * (2 ^ (n - 3) - 1) + 1 + 1 = 2 ^ ((n + 1) - 3) := by
+        refine ⟨by omega, ?_⟩
+        rw [hexp1, hodd]
+        exact Nat.sub_add_cancel Nat.one_le_two_pow
+      rw [if_pos hc]
+      have h1 : (n + 1) - 1 = n := by omega
+      rw [h1]
+    have hcapN : capTerm n (2 ^ (n - 3) - 1) = 3 * (2 ^ (n - 1) - 1) := by
+      unfold capTerm
+      rw [if_pos ⟨hn4, Nat.sub_add_cancel Nat.one_le_two_pow⟩]
+    rw [shells_double_odd n (2 ^ (n - 3) - 1) hn4 ht, hnew, hcap, hcapN, plateau_double n hn]
+    ring
+  · have hn3 : n = 3 := by omega
+    subst hn3
+    decide
+
+theorem birthSpectrum_differ (n k : ℕ) (hn : 3 ≤ n) (hk : k < 2 ^ (n - 3)) :
+    birthSpectrum (n + 1) (2 * (2 ^ (n - 3) - 1 - k)) = 2 * birthSpectrum n k := by
+  by_cases hn4 : 4 ≤ n
+  · have hone : (1 : ℕ) ≤ 2 ^ (n - 3) := Nat.one_le_two_pow
+    have hkle : k ≤ 2 ^ (n - 3) - 1 := Nat.le_sub_of_add_le hk
+    have hs : 2 ^ (n - 2) = 2 * 2 ^ (n - 3) := by
+      have : n - 2 = (n - 3) + 1 := by omega
+      rw [this, pow_succ, Nat.mul_comm]
+    have h2N : 2 ≤ 2 * 2 ^ (n - 3) := Nat.mul_le_mul_left 2 hone
+    have hstrict : 2 * (2 ^ (n - 3) - 1) < 2 * 2 ^ (n - 3) := by
+      rw [Nat.mul_sub_left_distrib, show (2 * 1 : ℕ) = 2 by decide]
+      exact Nat.sub_lt (Nat.lt_of_lt_of_le (by decide : (0 : ℕ) < 2) h2N) (by decide : (0 : ℕ) < 2)
+    have hbin : 2 * (2 ^ (n - 3) - 1 - k) < 2 ^ (n - 2) := by
+      rw [hs]
+      exact Nat.lt_of_le_of_lt (Nat.mul_le_mul_left 2 (Nat.sub_le _ _)) hstrict
+    have hexp : (n - 2) - 1 = n - 3 := by omega
+    have h12 : 1 ≤ n - 2 := by omega
+    have hne_top : 2 * (2 ^ (n - 3) - 1 - k) ≠ 2 ^ (n - 2) - 1 := by
+      intro h
+      have heven : Even (2 * (2 ^ (n - 3) - 1 - k)) := even_two_mul _
+      rw [h] at heven
+      have hodd := pred_double (n - 2) h12
+      rw [hexp] at hodd
+      rw [← hodd] at heven
+      exact (Nat.even_add_one.mp heven) (even_two_mul _)
+    have hzero : 2 * (2 ^ (n - 3) - 1 - k) = 0 ↔ k = 2 ^ (n - 3) - 1 := by
+      constructor
+      · intro h
+        rcases Nat.mul_eq_zero.mp h with h2 | h2
+        · exact absurd h2 (by decide : (2 : ℕ) ≠ 0)
+        · have h2' := (Nat.sub_eq_iff_eq_add hkle).mp h2
+          rw [Nat.zero_add] at h2'
+          exact h2'.symm
+      · intro h
+        rw [h, Nat.sub_self, Nat.mul_zero]
+    unfold birthSpectrum
+    rw [range_shells n hn4, List.map_append, List.sum_append, List.map_singleton, List.sum_singleton]
+    have hnew : shellTerm (n + 1) ((n - 4) + 3) (2 * (2 ^ (n - 3) - 1 - k))
+        = if k = 2 ^ (n - 3) - 1 then 6 * (2 ^ (n - 1) - 1) else 0 := by
+      have hj : (n - 4) + 3 = n - 1 := by omega
+      rw [hj, shellTerm_new n _ hn4 hbin]
+      have hiff : (2 * (2 ^ (n - 3) - 1 - k) = 0 ∨
+          2 * (2 ^ (n - 3) - 1 - k) = 2 ^ (n - 2) - 1) ↔ k = 2 ^ (n - 3) - 1 := by
+        constructor
+        · intro h
+          rcases h with h | h
+          · exact hzero.mp h
+          · exact absurd h hne_top
+        · intro h
+          exact Or.inl (hzero.mpr h)
+      exact if_congr hiff rfl rfl
+    have hcap : capTerm (n + 1) (2 * (2 ^ (n - 3) - 1 - k)) = 0 := by
+      unfold capTerm
+      rw [if_neg (by
+        intro h
+        have hexp1 : (n + 1) - 3 = n - 2 := by omega
+        have h2 := h.2
+        rw [hexp1] at h2
+        exact hne_top ((Nat.sub_eq_iff_eq_add Nat.one_le_two_pow).mpr h2.symm).symm)]
+    have hcapN : capTerm n k =
+        if k = 2 ^ (n - 3) - 1 then 3 * (2 ^ (n - 1) - 1) else 0 := by
+      unfold capTerm
+      by_cases hk1 : k = 2 ^ (n - 3) - 1
+      · subst hk1
+        rw [if_pos ⟨hn4, Nat.sub_add_cancel hone⟩, if_pos rfl]
+      · rw [if_neg (by
+          intro h
+          exact hk1 (((Nat.sub_eq_iff_eq_add hone).mpr h.2.symm).symm)), if_neg hk1]
+    rw [shells_double_even n k hn4 hk, hnew, hcap, hcapN, plateau_double n hn]
+    by_cases hk1 : k = 2 ^ (n - 3) - 1
+    · subst hk1
+      rw [if_pos rfl, if_pos rfl]
+      ring
+    · rw [if_neg hk1, if_neg hk1]
+      ring
+  · have hn3 : n = 3 := by omega
+    subst hn3
+    have hk0 : k = 0 := Nat.lt_one_iff.mp (by simpa using hk)
+    subst hk0
+    decide
+
+theorem birthCount_three : birthCount 3 4 = 42 := by
+  classical
+  have h4 : ∀ a b : BUnit 3, a ≠ bone 3 → b ≠ bone 3 → a ≠ b → birth a b = 4 := by
+    intro a b ha hb hab
+    have h8 := birth_mod_eight a b ha hb hab
+    have hle := (birth_props a b ha hb hab).2
+    omega
+  have hcard : (Finset.univ.filter fun p : BUnit 3 × BUnit 3 =>
+      p.1 ≠ bone 3 ∧ p.2 ≠ bone 3 ∧ p.1 ≠ p.2).card = 42 := by decide
+  unfold birthCount
+  have hsub : (Finset.univ.filter fun p : BUnit 3 × BUnit 3 =>
+      p.1 ≠ bone 3 ∧ p.2 ≠ bone 3 ∧ p.1 ≠ p.2 ∧ birth p.1 p.2 = 4)
+      = Finset.univ.filter fun p : BUnit 3 × BUnit 3 =>
+        p.1 ≠ bone 3 ∧ p.2 ≠ bone 3 ∧ p.1 ≠ p.2 := by
+    ext p
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and]
+    constructor
+    · rintro ⟨ha, hb, hab, _⟩
+      exact ⟨ha, hb, hab⟩
+    · rintro ⟨ha, hb, hab⟩
+      exact ⟨ha, hb, hab, h4 p.1 p.2 ha hb hab⟩
+  rw [hsub, hcard]
+
+theorem eight_top (d : ℕ) : 8 * (2 ^ d - 1) + 4 = 2 ^ (d + 3) - 4 := by
+  have h8 : 8 ≤ 2 ^ (d + 3) :=
+    Nat.le_trans (by decide : (8 : ℕ) ≤ 2 ^ 3)
+      (Nat.pow_le_pow_right (by decide : 0 < 2) (Nat.le_add_left 3 d))
+  have h4 : 4 ≤ 2 ^ (d + 3) := Nat.le_trans (by decide : (4 : ℕ) ≤ 8) h8
+  have hs : 2 ^ (d + 3) = 8 * 2 ^ d := by
+    rw [pow_add, show (2 ^ 3 : ℕ) = 8 by decide, Nat.mul_comm]
+  rw [Nat.mul_sub_left_distrib, show (8 * 1 : ℕ) = 8 by decide, ← hs]
+  apply Eq.symm
+  apply Nat.add_right_cancel (m := 4)
+  rw [Nat.sub_add_cancel h4, Nat.add_assoc, show (4 + 4 : ℕ) = 8 by decide,
+    Nat.sub_add_cancel h8]
+
+theorem birthCount_spectrum : ∀ d k, k < 2 ^ d →
+    birthCount (d + 3) (8 * k + 4) = 2 * birthSpectrum (d + 3) k := by
+  intro d
+  induction d with
+  | zero =>
+      intro k hk
+      have hk0 : k = 0 := Nat.lt_one_iff.mp (by simpa using hk)
+      subst hk0
+      have hs : birthSpectrum 3 0 = 21 := by decide
+      rw [birthCount_three, hs]
+  | succ d ih =>
+      intro k hk
+      have hpow : 2 ^ (d + 1) = 2 * 2 ^ d := by rw [pow_succ, Nat.mul_comm]
+      by_cases hpar : k % 2 = 0
+      · have hdiv : k = 2 * (k / 2) := by
+          have hmoddiv := Nat.mod_add_div k 2
+          rw [hpar, Nat.zero_add] at hmoddiv
+          exact hmoddiv.symm
+        set t : ℕ := 2 ^ d - 1 - k / 2
+        have hhalf : k / 2 < 2 ^ d := by
+          have hmul : 2 * (k / 2) < 2 * 2 ^ d := by rwa [← hdiv, ← hpow]
+          exact Nat.lt_of_mul_lt_mul_left hmul
+        have hkle : k / 2 ≤ 2 ^ d - 1 := Nat.le_sub_of_add_le hhalf
+        have ht_back : 2 ^ d - 1 - t = k / 2 := Nat.sub_sub_self hkle
+        have ht : k = 2 * (2 ^ d - 1 - t) := by rw [hdiv, ht_back]
+        have hpos : 0 < 2 ^ d :=
+          Nat.lt_of_lt_of_le (by decide : (0 : ℕ) < 1) Nat.one_le_two_pow
+        have htlt : t < 2 ^ d :=
+          Nat.lt_of_le_of_lt (Nat.sub_le _ _) (Nat.sub_lt hpos (by decide : (0 : ℕ) < 1))
+        have hv : 8 * k + 4 = 8 * (2 * (2 ^ d - 1 - t)) + 4 := by rw [ht]
+        have hidx : (d + 3) - 3 = d := by omega
+        have htlt' : t < 2 ^ ((d + 3) - 3) := by rw [hidx]; exact htlt
+        rw [hv, birthCount_differ d t htlt, ih t htlt, ht]
+        have hs := birthSpectrum_differ (d + 3) t (by omega) htlt'
+        simp only [hidx] at hs
+        rw [hs]
+      · have hmod : k % 2 = 1 := by
+          have hle : k % 2 ≤ 1 := Nat.le_of_lt_succ (Nat.mod_lt k (by decide : 0 < 2))
+          rcases Nat.eq_or_lt_of_le hle with h | h
+          · exact h
+          · exact absurd (Nat.lt_one_iff.mp h) hpar
+        set t : ℕ := k / 2
+        have hdiv : k = 2 * t + 1 := by
+          have hmoddiv := Nat.mod_add_div k 2
+          rw [hmod, Nat.add_comm] at hmoddiv
+          simpa [t] using hmoddiv.symm
+        have ht : t < 2 ^ d := by
+          have hmul : 2 * (t + 1) ≤ 2 * 2 ^ d := by
+            rw [← hpow]
+            have hadd : 2 * t + 1 + 1 = 2 * (t + 1) := by ring
+            rw [← hadd, ← hdiv]
+            exact hk
+          exact Nat.lt_of_succ_le (Nat.le_of_mul_le_mul_left hmul (by decide : 0 < 2))
+        have hv : 8 * k + 4 = 8 * (2 * t + 1) + 4 := by rw [hdiv]
+        by_cases htop : k = 2 ^ (d + 1) - 1
+        · have hpred : 2 ^ d - 1 < 2 ^ d :=
+            Nat.sub_lt (Nat.lt_of_lt_of_le (by decide : (0 : ℕ) < 1) Nat.one_le_two_pow)
+              (by decide : (0 : ℕ) < 1)
+          rw [htop, eight_top (d + 1), birthCount_top d, ← eight_top d, ih _ hpred]
+          have hs := birthSpectrum_top (d + 3) (by omega)
+          have hidx : (d + 3) - 3 = d := by omega
+          have hidx2 : (d + 3) - 2 = d + 1 := by omega
+          simp only [hidx, hidx2] at hs
+          rw [hs]
+          ring
+        · have hne : 2 * t + 1 ≠ 2 ^ (d + 1) - 1 := fun h => htop (hdiv.trans h)
+          have hidx : (d + 3) - 3 = d := by omega
+          have hidx2 : (d + 3) - 2 = d + 1 := by omega
+          have ht' : t < 2 ^ ((d + 3) - 3) := by rw [hidx]; exact ht
+          have hne' : 2 * t + 1 ≠ 2 ^ ((d + 3) - 2) - 1 := by rw [hidx2]; exact hne
+          rw [hv, birthCount_agree d t ht hne, ih t ht, hdiv]
+          have hs := birthSpectrum_agree (d + 3) t (by omega) ht' hne'
+          rw [hs]
+
+/-- **Birth spectrum (sealed).** For `m ≥ 3` and `k < 2^(m−3)`, the number of unordered
+pairs of distinct imaginary indices with `birth = 8k+4` is the closed form. -/
+theorem birth_spectrum (m k : ℕ) (hm : 3 ≤ m) (hk : k < 2 ^ (m - 3)) :
+    birthCount m (8 * k + 4) / 2 = birthSpectrum m k := by
+  have hm' : m - 3 + 3 = m := by omega
+  have h := birthCount_spectrum (m - 3) k (by simpa [hm'] using hk)
+  have hm3 : (m - 3) + 3 = m := hm'
+  simp only [hm3] at h
+  rw [h, Nat.mul_div_cancel_left _ (by decide : 0 < 2)]
+
+theorem birthHistogram_eq_spectrum (m : ℕ) (hm : 3 ≤ m) :
+    birthHistogram m = birthSpectrumList m := by
+  unfold birthHistogram birthSpectrumList
+  refine map_on _ _ _ fun k hk => ?_
+  rw [List.mem_range] at hk
+  rw [birth_spectrum m k hm hk]
+
+theorem spectrumCheck_true (m : ℕ) (hm : 3 ≤ m) : spectrumCheck m = true := by
+  unfold spectrumCheck
+  rw [birthHistogram_eq_spectrum m hm]
+  exact BEq.rfl
 
 /-! ## Floor E: the Zhilina bridge — graph degrees are birth values
 
@@ -2497,6 +3705,10 @@ theorem zhilina_degree_eq_birth {m : ℕ} (a b : BUnit m) (ha : a ≠ bone m) (h
 #print axioms birth_closed
 #print axioms birth_four_lifts
 #print axioms birthTotal_succ
+#print axioms birth_spectrum
+#print axioms birthCount_agree
+#print axioms birthCount_top
+#print axioms birthCount_differ
 
 #eval (List.range 6).map fun k => (k + 3, birthTotal (k + 3), 4 * 8 ^ (k + 2) - 28 * 2 ^ (k + 2) + 24)
 #eval (List.range 6).map fun k => (k + 3, spectrumCheck (k + 3))
