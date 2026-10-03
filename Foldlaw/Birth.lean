@@ -1968,6 +1968,37 @@ theorem birthTotal_succ (n : ℕ) : birthTotal (n + 1) + 28 * 2 ^ n = 4 * 8 ^ n 
   zify at hsum ⊢
   linear_combination hsum
 
+/-! ## The spectrum of birth — closed form, checked by evaluation, NOT a theorem
+
+Number of unordered pairs of distinct imaginary indices at level `m ≥ 3` with
+`birth = 8k + 4`, for `0 ≤ k < 2^(m−3)`:
+
+  H_m(k) = 21·2^(m−3)
+         + Σ_{j=3}^{m−2} 3·2^(m−j−1)(2^j − 1)·[k < 2^(m−j−2)  or  k ≥ 2^(m−3) − 2^(m−j−2)]
+         + 3·(2^(m−1) − 1)·[k = 2^(m−3) − 1].
+
+Derivation (on paper, 2026-10-03): (1) the number of ordered pairs with `Jlev = j` and a
+prescribed pattern of bits of `a xor b` above `j` is `3·2^(m−j)(2^j − 1)`, independent of the
+pattern; (2) writing the bin index `k` as an `(m−3)`-bit string, the two clauses of `Tclosed`
+act as `k ↦ 2k+1` (append 1) and `k ↦ 2(N−1−k)` (complement, append 0), so from the top bin
+at level `j+1` the reachable bins at level `m` are exactly those whose first `j−1` bits are
+equal; `J ≤ 2` pairs all pass through the single bin of level 3 and then reach every bin once.
+`spectrumCheck m` compares the formula with `birthHistogram` (the sealed recursion); it is
+`true` for `m = 3, …, 8`. -/
+
+def birthSpectrum (m k : ℕ) : ℕ :=
+  21 * 2 ^ (m - 3)
+  + ((List.range (m - 4)).map fun i =>
+      let j := i + 3
+      if k < 2 ^ (m - 2 - j) ∨ 2 ^ (m - 3) ≤ k + 2 ^ (m - 2 - j)
+      then 3 * 2 ^ (m - j - 1) * (2 ^ j - 1) else 0).sum
+  + (if 4 ≤ m ∧ k + 1 = 2 ^ (m - 3) then 3 * (2 ^ (m - 1) - 1) else 0)
+
+def birthSpectrumList (m : ℕ) : List (ℕ × ℕ) :=
+  (List.range (2 ^ (m - 3))).map fun k => (8 * k + 4, birthSpectrum m k)
+
+def spectrumCheck (m : ℕ) : Bool := birthHistogram m == birthSpectrumList m
+
 /-! ## Floor E: the Zhilina bridge — graph degrees are birth values
 
 Zhilina (IJAC 31, 2021; Part I: DOI 10.1142/S0218196721500326,
@@ -2468,5 +2499,6 @@ theorem zhilina_degree_eq_birth {m : ℕ} (a b : BUnit m) (ha : a ≠ bone m) (h
 #print axioms birthTotal_succ
 
 #eval (List.range 6).map fun k => (k + 3, birthTotal (k + 3), 4 * 8 ^ (k + 2) - 28 * 2 ^ (k + 2) + 24)
+#eval (List.range 6).map fun k => (k + 3, spectrumCheck (k + 3))
 
 end Foldlaw
