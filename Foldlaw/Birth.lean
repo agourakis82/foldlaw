@@ -1458,6 +1458,260 @@ def closedCheck (m : ℕ) : Bool :=
     p.1 ≠ bone m ∧ p.2 ≠ bone m ∧ p.1 ≠ p.2 ∧
       (birth p.1 p.2 : ℤ) ≠ birthClosed m (toNat p.1) (toNat p.2)) = ∅
 
+/-! ## Closed form, sealed: the signed-digit unwinding as a theorem
+
+The same formula, read structurally off the bit string. `lsbB u` is the position of
+the lowest set bit of the index `u` (`m` for `bone m`, which has none). `Jlev a b =
+max (lsbB a, lsbB b, lsbB (a xor b))` is the level below the one at which the recursion
+first hits the maximum. `Tclosed d j` unwinds the recursion along the bits of
+`d = a xor b` above `j`:
+
+  T_(j+1) = 2^j − 4,    T_k = σ_(k−1) (2 T_(k−1) + 4)   for k = j+2, …, m,
+
+with `σ_(k−1) = +1` if bit `k−1` of `d` is `0` (the leading bits of `a`, `b` agree) and
+`−1` if it is `1`. `birth_closed` is the paper's equation (9). -/
+
+def lsbB : ∀ {m : ℕ}, BUnit m → ℕ
+  | 0, _ => 0
+  | n + 1, BUnit.lower u => if u = bone n then n + 1 else lsbB u
+  | n + 1, BUnit.upper u => lsbB u
+
+theorem lsbB_bone : ∀ m : ℕ, lsbB (bone m) = m
+  | 0 => rfl
+  | n + 1 => by
+      show lsbB (BUnit.lower (bone n)) = n + 1
+      simp [lsbB]
+
+theorem lsbB_lower_of_ne {n : ℕ} {u : BUnit n} (h : u ≠ bone n) :
+    lsbB (BUnit.lower u) = lsbB u := by
+  simp [lsbB, h]
+
+theorem lsbB_upper {n : ℕ} (u : BUnit n) : lsbB (BUnit.upper u) = lsbB u := rfl
+
+theorem lsbB_le : ∀ {m : ℕ} (u : BUnit m), lsbB u ≤ m
+  | 0, BUnit.real0 => le_refl 0
+  | n + 1, BUnit.lower u => by
+      by_cases h : u = bone n
+      · subst h
+        exact le_of_eq (lsbB_bone (n + 1))
+      · rw [lsbB_lower_of_ne h]
+        exact Nat.le_succ_of_le (lsbB_le u)
+  | n + 1, BUnit.upper u => Nat.le_succ_of_le (lsbB_le u)
+
+theorem lsbB_lt : ∀ {m : ℕ} (u : BUnit m), u ≠ bone m → lsbB u < m
+  | 0, BUnit.real0, h => absurd rfl h
+  | n + 1, BUnit.lower u, h => by
+      have hu : u ≠ bone n := lower_ne_bone h
+      rw [lsbB_lower_of_ne hu]
+      exact Nat.lt_succ_of_lt (lsbB_lt u hu)
+  | n + 1, BUnit.upper u, _ => by
+      rw [lsbB_upper]
+      exact Nat.lt_succ_of_le (lsbB_le u)
+
+/-- The start level of the closed form: `J = max(lsb a, lsb b, lsb (a xor b))`. -/
+def Jlev {m : ℕ} (a b : BUnit m) : ℕ := max (lsbB a) (max (lsbB b) (lsbB (bxor a b)))
+
+/-- The unwinding `T_m` of the recursion along the bits of `d = a xor b` above `j`. -/
+def Tclosed : ∀ {m : ℕ}, BUnit m → ℕ → ℤ
+  | 0, _, _ => 0
+  | n + 1, BUnit.lower d, j => if n = j then 2 ^ j - 4 else 2 * Tclosed d j + 4
+  | n + 1, BUnit.upper d, j => if n = j then 2 ^ j - 4 else -(2 * Tclosed d j + 4)
+
+theorem Tclosed_lower {n : ℕ} (d : BUnit n) (j : ℕ) :
+    Tclosed (BUnit.lower d) j = if n = j then 2 ^ j - 4 else 2 * Tclosed d j + 4 := rfl
+
+theorem Tclosed_upper {n : ℕ} (d : BUnit n) (j : ℕ) :
+    Tclosed (BUnit.upper d) j = if n = j then 2 ^ j - 4 else -(2 * Tclosed d j + 4) := rfl
+
+theorem bxor_lower_lower {n : ℕ} (a b : BUnit n) :
+    bxor (BUnit.lower a) (BUnit.lower b) = BUnit.lower (bxor a b) := rfl
+theorem bxor_lower_upper {n : ℕ} (a b : BUnit n) :
+    bxor (BUnit.lower a) (BUnit.upper b) = BUnit.upper (bxor a b) := rfl
+theorem bxor_upper_lower {n : ℕ} (a b : BUnit n) :
+    bxor (BUnit.upper a) (BUnit.lower b) = BUnit.upper (bxor a b) := rfl
+theorem bxor_upper_upper {n : ℕ} (a b : BUnit n) :
+    bxor (BUnit.upper a) (BUnit.upper b) = BUnit.lower (bxor a b) := rfl
+
+theorem bxor_ne_bone {n : ℕ} {a b : BUnit n} (hab : a ≠ b) : bxor a b ≠ bone n :=
+  fun h => hab (bxor_eq_bone_iff.mp h)
+
+theorem Jlev_lt {n : ℕ} (a b : BUnit n) (ha : a ≠ bone n) (hb : b ≠ bone n) (hab : a ≠ b) :
+    Jlev a b < n := by
+  unfold Jlev
+  have h1 := lsbB_lt a ha
+  have h2 := lsbB_lt b hb
+  have h3 := lsbB_lt _ (bxor_ne_bone hab)
+  omega
+
+theorem Jlev_LL {n : ℕ} {a b : BUnit n} (ha : a ≠ bone n) (hb : b ≠ bone n) (hab : a ≠ b) :
+    Jlev (BUnit.lower a) (BUnit.lower b) = Jlev a b := by
+  unfold Jlev
+  rw [bxor_lower_lower, lsbB_lower_of_ne ha, lsbB_lower_of_ne hb,
+    lsbB_lower_of_ne (bxor_ne_bone hab)]
+
+theorem Jlev_LU {n : ℕ} {a : BUnit n} (b : BUnit n) (ha : a ≠ bone n) :
+    Jlev (BUnit.lower a) (BUnit.upper b) = Jlev a b := by
+  unfold Jlev
+  rw [bxor_lower_upper, lsbB_lower_of_ne ha, lsbB_upper, lsbB_upper]
+
+theorem Jlev_UL {n : ℕ} (a : BUnit n) {b : BUnit n} (hb : b ≠ bone n) :
+    Jlev (BUnit.upper a) (BUnit.lower b) = Jlev a b := by
+  unfold Jlev
+  rw [bxor_upper_lower, lsbB_lower_of_ne hb, lsbB_upper, lsbB_upper]
+
+theorem Jlev_UU {n : ℕ} {a b : BUnit n} (hab : a ≠ b) :
+    Jlev (BUnit.upper a) (BUnit.upper b) = Jlev a b := by
+  unfold Jlev
+  rw [bxor_upper_upper, lsbB_upper, lsbB_upper, lsbB_lower_of_ne (bxor_ne_bone hab)]
+
+/-- At the level where the maximum is hit, `J` is the level below. -/
+theorem Jlev_LU_max {n : ℕ} {a b : BUnit n} (ha : a ≠ bone n) (h : b = bone n ∨ b = a) :
+    Jlev (BUnit.lower a) (BUnit.upper b) = n := by
+  unfold Jlev
+  rw [bxor_lower_upper, lsbB_lower_of_ne ha, lsbB_upper, lsbB_upper]
+  have h1 := lsbB_le a
+  have h3 := lsbB_le (bxor a b)
+  rcases h with h | h
+  · subst h
+    rw [lsbB_bone]
+    omega
+  · subst h
+    rw [bxor_self, lsbB_bone]
+    omega
+
+theorem Jlev_UL_max {n : ℕ} {a b : BUnit n} (hb : b ≠ bone n) (h : a = bone n ∨ a = b) :
+    Jlev (BUnit.upper a) (BUnit.lower b) = n := by
+  unfold Jlev
+  rw [bxor_upper_lower, lsbB_lower_of_ne hb, lsbB_upper, lsbB_upper]
+  have h2 := lsbB_le b
+  have h3 := lsbB_le (bxor a b)
+  rcases h with h | h
+  · subst h
+    rw [lsbB_bone]
+    omega
+  · subst h
+    rw [bxor_self, lsbB_bone]
+    omega
+
+theorem Jlev_UU_max {n : ℕ} {a b : BUnit n} (hab : a ≠ b) (h : a = bone n ∨ b = bone n) :
+    Jlev (BUnit.upper a) (BUnit.upper b) = n := by
+  unfold Jlev
+  rw [bxor_upper_upper, lsbB_upper, lsbB_upper, lsbB_lower_of_ne (bxor_ne_bone hab)]
+  have h1 := lsbB_le a
+  have h2 := lsbB_le b
+  have h3 := lsbB_le (bxor a b)
+  rcases h with h | h
+  · subst h
+    rw [lsbB_bone] at h1 ⊢
+    omega
+  · subst h
+    rw [lsbB_bone] at h2 ⊢
+    omega
+
+/-- **Closed form (sealed)**: equation (9) of the paper. For distinct imaginary indices,
+`birth a b = 2^(m−1) + T_m` with `T_(J+1) = 2^J − 4` and `T_k = σ_(k−1)(2 T_(k−1) + 4)`. -/
+theorem birth_closed : ∀ {m : ℕ} (a b : BUnit m), a ≠ bone m → b ≠ bone m → a ≠ b →
+    (birth a b : ℤ) = 2 ^ (m - 1) + Tclosed (bxor a b) (Jlev a b)
+  | 0, BUnit.real0, _, ha, _, _ => absurd rfl ha
+  | n + 1, BUnit.lower a, BUnit.lower b, ha, hb, hab => by
+      have ha' := lower_ne_bone ha
+      have hb' := lower_ne_bone hb
+      have hab' := lower_inj' hab
+      have ih := birth_closed a b ha' hb' hab'
+      have hJ := Jlev_lt a b ha' hb' hab'
+      have hn := one_le_of_ne_bone ha'
+      have h2 : (2 : ℤ) ^ n = 2 * 2 ^ (n - 1) := by
+        rw [← pow_succ', Nat.sub_add_cancel hn]
+      rw [birth_LL, Nat.add_sub_cancel, Jlev_LL ha' hb' hab', bxor_lower_lower, Tclosed_lower,
+        if_neg (by omega)]
+      push_cast
+      rw [ih, h2]
+      ring
+  | n + 1, BUnit.lower a, BUnit.upper b, ha, _, _ => by
+      have ha' := lower_ne_bone ha
+      have hn := one_le_of_ne_bone ha'
+      have h2 : (2 : ℤ) ^ n = 2 * 2 ^ (n - 1) := by
+        rw [← pow_succ', Nat.sub_add_cancel hn]
+      have h4 : 4 ≤ 2 ^ (n + 1) := by
+        have h1 : 1 ≤ 2 ^ (n - 1) := Nat.one_le_two_pow
+        rw [pow_succ_eq hn]
+        omega
+      rw [birth_LU, Nat.add_sub_cancel, bxor_lower_upper]
+      split_ifs with h
+      · rw [Jlev_LU_max ha' h, Tclosed_upper, if_pos rfl, Nat.cast_sub h4]
+        push_cast
+        rw [pow_succ]
+        ring
+      · push_neg at h
+        have hb' := h.1
+        have hab' : a ≠ b := fun e => h.2 e.symm
+        have ih := birth_closed a b ha' hb' hab'
+        have hJ := Jlev_lt a b ha' hb' hab'
+        have hbd := (birth_props a b ha' hb' hab').2
+        have hsub : 2 * birth a b + 4 ≤ 2 ^ (n + 1) := by
+          rw [pow_succ]
+          omega
+        rw [Jlev_LU b ha', Tclosed_upper, if_neg (by omega), Nat.sub_sub, Nat.cast_sub hsub]
+        push_cast
+        rw [ih, pow_succ, h2]
+        ring
+  | n + 1, BUnit.upper a, BUnit.lower b, _, hb, _ => by
+      have hb' := lower_ne_bone hb
+      have hn := one_le_of_ne_bone hb'
+      have h2 : (2 : ℤ) ^ n = 2 * 2 ^ (n - 1) := by
+        rw [← pow_succ', Nat.sub_add_cancel hn]
+      have h4 : 4 ≤ 2 ^ (n + 1) := by
+        have h1 : 1 ≤ 2 ^ (n - 1) := Nat.one_le_two_pow
+        rw [pow_succ_eq hn]
+        omega
+      rw [birth_UL, Nat.add_sub_cancel, bxor_upper_lower]
+      split_ifs with h
+      · rw [Jlev_UL_max hb' h, Tclosed_upper, if_pos rfl, Nat.cast_sub h4]
+        push_cast
+        rw [pow_succ]
+        ring
+      · push_neg at h
+        have ha' := h.1
+        have hab' : a ≠ b := h.2
+        have ih := birth_closed a b ha' hb' hab'
+        have hJ := Jlev_lt a b ha' hb' hab'
+        have hbd := (birth_props a b ha' hb' hab').2
+        have hsub : 2 * birth a b + 4 ≤ 2 ^ (n + 1) := by
+          rw [pow_succ]
+          omega
+        rw [Jlev_UL a hb', Tclosed_upper, if_neg (by omega), Nat.sub_sub, Nat.cast_sub hsub]
+        push_cast
+        rw [ih, pow_succ, h2]
+        ring
+  | n + 1, BUnit.upper a, BUnit.upper b, _, _, hab => by
+      have hab' := upper_inj' hab
+      rw [birth_UU, Nat.add_sub_cancel, bxor_upper_upper]
+      split_ifs with h
+      · have hn : 1 ≤ n := by
+          rcases h with h | h
+          · exact one_le_of_ne_bone (fun h' : b = bone n => hab' (h.trans h'.symm))
+          · exact one_le_of_ne_bone (fun h' : a = bone n => hab' (h'.trans h.symm))
+        have h4 : 4 ≤ 2 ^ (n + 1) := by
+          have h1 : 1 ≤ 2 ^ (n - 1) := Nat.one_le_two_pow
+          rw [pow_succ_eq hn]
+          omega
+        rw [Jlev_UU_max hab' h, Tclosed_lower, if_pos rfl, Nat.cast_sub h4]
+        push_cast
+        rw [pow_succ]
+        ring
+      · push_neg at h
+        have ha' := h.1
+        have hb' := h.2
+        have ih := birth_closed a b ha' hb' hab'
+        have hJ := Jlev_lt a b ha' hb' hab'
+        have hn := one_le_of_ne_bone ha'
+        have h2 : (2 : ℤ) ^ n = 2 * 2 ^ (n - 1) := by
+          rw [← pow_succ', Nat.sub_add_cancel hn]
+        rw [Jlev_UU hab', Tclosed_lower, if_neg (by omega)]
+        push_cast
+        rw [ih, h2]
+        ring
+
 /-! ## Floor E: the Zhilina bridge — graph degrees are birth values
 
 Zhilina (IJAC 31, 2021; Part I: DOI 10.1142/S0218196721500326,
@@ -1953,5 +2207,6 @@ theorem zhilina_degree_eq_birth {m : ℕ} (a b : BUnit m) (ha : a ≠ bone m) (h
 #print axioms anti_tgt_ne_bone
 #print axioms line_inj
 #print axioms line_ne_neg
+#print axioms birth_closed
 
 end Foldlaw

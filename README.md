@@ -66,7 +66,10 @@ lake build            # builds Foldlaw and Foldlaw.Birth; prints every #print ax
 | `birth_mod_eight` | from level 3 on, `birth ≡ 4 (mod 8)`: every value is `4·(odd)` |
 | **`finrank_ann_birth`** | **`dim ker L_{e_a + e_b ℓ} = birth a b`** at level `m+1` (annihilator dimension) |
 | `exists_annihilator` | at every level `≥ 4`, `e_a + e_b ℓ` is a zero divisor |
+| **`birth_closed`** | **closed form**: `birth a b = 2^(m−1) + T_m`, `T_(J+1) = 2^J − 4`, `T_k = σ_(k−1)(2T_(k−1)+4)`, `J = max lsb(a, b, a xor b)`, `σ` from the bits of `a xor b` (`lsbB`, `Jlev`, `Tclosed`) |
 | `birthHistogram` | computable census; `#eval birthHistogram 6` reproduces the exhaustive 128-census bin by bin |
+| `birthClosed`, `closedCheck` | integer-indexed reading of the closed form; `#eval closedCheck m` compares it with `birth` on every pair (true through `m = 8`); not a theorem |
+| `zhilina_degree_eq_birth` | degree of the vertex `±(e_a + τ e_b ℓ)` in the two-sided zero-divisor graph on doubly pure unit-pair lines `= birth a b` (with `ann_two_sided`, `ann_char`, `ann_line_unique`, `line_inj`, `line_ne_neg`, `annLine_bilateral`, `lineElem_sq_ne_zero`) |
 
 ## Literature position (honest)
 
