@@ -1712,6 +1712,262 @@ theorem birth_closed : ∀ {m : ℕ} (a b : BUnit m), a ≠ bone m → b ≠ bon
         rw [ih, h2]
         ring
 
+/-! ## Floor F: the four-lift sum rule and the total of birth
+
+For a pair `(a,b)` of distinct imaginary indices at level `n`, its four lifts to level
+`n+1` have birth values summing to `2^(n+2)`, independently of `birth a b`: the two
+"agree" lifts `((a,0),(b,0))`, `((0,a),(0,b))` contribute `2·birth + 4` each and the two
+"differ" lifts `((a,0),(0,b))`, `((0,a),(b,0))` contribute `2^(n+1) − 2·birth − 4` each,
+so `birth a b` cancels. Summing over all pairs, the total of `birth` over ordered distinct
+imaginary pairs at level `n+1` is `4·8^n − 28·2^n + 24 = 4(2^n + 3)(2^n − 1)(2^n − 2)`, with
+no dependence on the level-`n` total. By `zhilina_degree_eq_birth` this total is the
+number of edges of the two-sided zero-divisor graph on doubly pure unit-pair lines of
+`A_(n+2)`: `168` for the sedenion graph (`n = 1`), `1848`, `15960`, … -/
+
+theorem birth_four_lifts {n : ℕ} {a b : BUnit n} (ha : a ≠ bone n) (hb : b ≠ bone n)
+    (hab : a ≠ b) :
+    birth (BUnit.lower a) (BUnit.lower b) + birth (BUnit.lower a) (BUnit.upper b)
+      + birth (BUnit.upper a) (BUnit.lower b) + birth (BUnit.upper a) (BUnit.upper b)
+      = 2 ^ (n + 2) := by
+  have hbd := (birth_props a b ha hb hab).2
+  have h1 : ¬ (b = bone n ∨ b = a) := by
+    rintro (h | h)
+    · exact hb h
+    · exact hab h.symm
+  have h2 : ¬ (a = bone n ∨ a = b) := by
+    rintro (h | h)
+    · exact ha h
+    · exact hab h
+  have h3 : ¬ (a = bone n ∨ b = bone n) := by
+    rintro (h | h)
+    · exact ha h
+    · exact hb h
+  rw [birth_LL, birth_LU, birth_UL, birth_UU, if_neg h1, if_neg h2, if_neg h3]
+  have e1 : 2 ^ (n + 1) = 2 * 2 ^ n := by rw [pow_succ]; ring
+  have e2 : 2 ^ (n + 2) = 4 * 2 ^ n := by rw [pow_succ, pow_succ]; ring
+  omega
+
+/-- `birth` on ordered pairs, zero off the distinct-imaginary pairs. -/
+def birthTerm {m : ℕ} (a b : BUnit m) : ℕ :=
+  if a ≠ bone m ∧ b ≠ bone m ∧ a ≠ b then birth a b else 0
+
+/-- Total of `birth` over ordered pairs of distinct imaginary indices at level `m`. -/
+def birthTotal (m : ℕ) : ℕ := ∑ a : BUnit m, ∑ b : BUnit m, birthTerm a b
+
+theorem lower_eq_bone_iff {n : ℕ} {a : BUnit n} : BUnit.lower a = bone (n + 1) ↔ a = bone n := by
+  constructor
+  · intro h
+    have h' : BUnit.lower a = BUnit.lower (bone n) := h
+    injection h' with hidx h1
+  · intro h
+    rw [h]
+    rfl
+
+theorem lower_eq_lower_iff {n : ℕ} {a b : BUnit n} : BUnit.lower a = BUnit.lower b ↔ a = b := by
+  constructor
+  · intro h
+    injection h with hidx h1
+  · intro h
+    rw [h]
+
+theorem upper_eq_upper_iff {n : ℕ} {a b : BUnit n} : BUnit.upper a = BUnit.upper b ↔ a = b := by
+  constructor
+  · intro h
+    injection h with hidx h1
+  · intro h
+    rw [h]
+
+theorem lower_ne_upper' {n : ℕ} (a b : BUnit n) : BUnit.lower a ≠ BUnit.upper b := by
+  intro h
+  cases h
+
+theorem upper_ne_lower' {n : ℕ} (a b : BUnit n) : BUnit.upper a ≠ BUnit.lower b := by
+  intro h
+  cases h
+
+theorem birthTerm_LL {n : ℕ} (a b : BUnit n) :
+    birthTerm (BUnit.lower a) (BUnit.lower b)
+      = if a ≠ bone n ∧ b ≠ bone n ∧ a ≠ b then 2 * birth a b + 4 else 0 := by
+  unfold birthTerm
+  rw [birth_LL]
+  exact if_congr (by rw [ne_eq, lower_eq_bone_iff, ne_eq, lower_eq_bone_iff, ne_eq,
+    lower_eq_lower_iff]) rfl rfl
+
+theorem birthTerm_LU {n : ℕ} (a b : BUnit n) :
+    birthTerm (BUnit.lower a) (BUnit.upper b)
+      = if a ≠ bone n then
+          (if b = bone n ∨ b = a then 2 ^ (n + 1) - 4 else 2 ^ (n + 1) - 2 * birth a b - 4)
+        else 0 := by
+  unfold birthTerm
+  rw [birth_LU]
+  refine if_congr ?_ rfl rfl
+  constructor
+  · rintro ⟨h, -, -⟩
+    exact lower_ne_bone h
+  · intro h
+    exact ⟨fun e => h (lower_eq_bone_iff.mp e), upper_ne_bone b, lower_ne_upper' a b⟩
+
+theorem birthTerm_UL {n : ℕ} (a b : BUnit n) :
+    birthTerm (BUnit.upper a) (BUnit.lower b)
+      = if b ≠ bone n then
+          (if a = bone n ∨ a = b then 2 ^ (n + 1) - 4 else 2 ^ (n + 1) - 2 * birth a b - 4)
+        else 0 := by
+  unfold birthTerm
+  rw [birth_UL]
+  refine if_congr ?_ rfl rfl
+  constructor
+  · rintro ⟨-, h, -⟩
+    exact lower_ne_bone h
+  · intro h
+    exact ⟨upper_ne_bone a, fun e => h (lower_eq_bone_iff.mp e), upper_ne_lower' a b⟩
+
+theorem birthTerm_UU {n : ℕ} (a b : BUnit n) :
+    birthTerm (BUnit.upper a) (BUnit.upper b)
+      = if a ≠ b then
+          (if a = bone n ∨ b = bone n then 2 ^ (n + 1) - 4 else 2 * birth a b + 4)
+        else 0 := by
+  unfold birthTerm
+  rw [birth_UU]
+  refine if_congr ?_ rfl rfl
+  constructor
+  · rintro ⟨-, -, h⟩
+    exact fun e => h (by rw [e])
+  · intro h
+    exact ⟨upper_ne_bone a, upper_ne_bone b, fun e => h (upper_eq_upper_iff.mp e)⟩
+
+/-- The four lifts of a pair, summed (zero contributions off the distinct-imaginary pairs). -/
+def birthQuad {n : ℕ} (a b : BUnit n) : ℕ :=
+  birthTerm (BUnit.lower a) (BUnit.lower b) + birthTerm (BUnit.lower a) (BUnit.upper b)
+    + birthTerm (BUnit.upper a) (BUnit.lower b) + birthTerm (BUnit.upper a) (BUnit.upper b)
+
+/-- Pointwise form of the sum rule, valid for every pair (degenerate pairs included),
+with the corrections written as indicators so that it can be summed directly. -/
+theorem birthTerm_four_lifts {n : ℕ} (a b : BUnit n) :
+    birthQuad a b
+      + 8 * (if a = bone n then 1 else 0) + 8 * (if b = bone n then 1 else 0)
+      + 8 * (if a = b then 1 else 0)
+      + 2 ^ (n + 2) * ((if a = bone n then 1 else 0) * (if b = bone n then 1 else 0))
+      = 2 ^ (n + 2) + 24 * ((if a = bone n then 1 else 0) * (if b = bone n then 1 else 0)) := by
+  have e1 : 2 ^ (n + 1) = 2 * 2 ^ n := by rw [pow_succ]; ring
+  have e2 : 2 ^ (n + 2) = 4 * 2 ^ n := by rw [pow_succ, pow_succ]; ring
+  unfold birthQuad
+  rw [birthTerm_LL, birthTerm_LU, birthTerm_UL, birthTerm_UU]
+  by_cases ha : a = bone n
+  · subst ha
+    by_cases hb : b = bone n
+    · subst hb
+      simp
+      omega
+    · have hn := one_le_of_ne_bone hb
+      have h4 : 4 ≤ 2 ^ (n + 1) := by
+        have h1 : 1 ≤ 2 ^ (n - 1) := Nat.one_le_two_pow
+        rw [pow_succ_eq hn]
+        omega
+      simp [hb, Ne.symm hb]
+      omega
+  · by_cases hb : b = bone n
+    · subst hb
+      have hn := one_le_of_ne_bone ha
+      have h4 : 4 ≤ 2 ^ (n + 1) := by
+        have h1 : 1 ≤ 2 ^ (n - 1) := Nat.one_le_two_pow
+        rw [pow_succ_eq hn]
+        omega
+      simp [ha, Ne.symm ha]
+      omega
+    · by_cases hab : a = b
+      · subst hab
+        have hn := one_le_of_ne_bone ha
+        have h4 : 4 ≤ 2 ^ (n + 1) := by
+          have h1 : 1 ≤ 2 ^ (n - 1) := Nat.one_le_two_pow
+          rw [pow_succ_eq hn]
+          omega
+        simp [ha]
+        omega
+      · have hbd := (birth_props a b ha hb hab).2
+        simp [ha, hb, hab, Ne.symm hab]
+        omega
+
+/-- The quadrant split of the total: level `n+1` as a double sum over level `n`. -/
+theorem birthTotal_split (n : ℕ) :
+    birthTotal (n + 1) = ∑ a : BUnit n, ∑ b : BUnit n, birthQuad a b := by
+  unfold birthTotal
+  rw [sum_succ_split (fun A => ∑ B : BUnit (n + 1), birthTerm A B)]
+  simp only [sum_succ_split (fun B => birthTerm (BUnit.lower _) B),
+    sum_succ_split (fun B => birthTerm (BUnit.upper _) B)]
+  rw [← Finset.sum_add_distrib]
+  refine Finset.sum_congr rfl (fun a _ => ?_)
+  unfold birthQuad
+  rw [Finset.sum_add_distrib, Finset.sum_add_distrib, Finset.sum_add_distrib]
+  ring
+
+theorem sum_ind_left (n c : ℕ) :
+    ∑ a : BUnit n, ∑ _b : BUnit n, (c * if a = bone n then 1 else 0) = c * 2 ^ n := by
+  classical
+  simp only [Finset.sum_const, Finset.card_univ, bUnit_card, smul_eq_mul]
+  rw [← Finset.mul_sum, ← Finset.mul_sum, Finset.sum_ite_eq']
+  simp
+  ring
+
+theorem sum_ind_right (n c : ℕ) :
+    ∑ _a : BUnit n, ∑ b : BUnit n, (c * if b = bone n then 1 else 0) = c * 2 ^ n := by
+  classical
+  have h : ∑ b : BUnit n, (c * if b = bone n then 1 else 0) = c := by
+    rw [← Finset.mul_sum, Finset.sum_ite_eq']
+    simp
+  simp only [h, Finset.sum_const, Finset.card_univ, bUnit_card, smul_eq_mul]
+  ring
+
+theorem sum_ind_diag (n c : ℕ) :
+    ∑ a : BUnit n, ∑ b : BUnit n, (c * if a = b then 1 else 0) = c * 2 ^ n := by
+  classical
+  have h : ∀ a : BUnit n, ∑ b : BUnit n, (c * if a = b then 1 else 0) = c := fun a => by
+    rw [← Finset.mul_sum, Finset.sum_ite_eq]
+    simp
+  simp only [h, Finset.sum_const, Finset.card_univ, bUnit_card, smul_eq_mul]
+  ring
+
+theorem sum_ind_both (n c : ℕ) :
+    ∑ a : BUnit n, ∑ b : BUnit n,
+      (c * ((if a = bone n then 1 else 0) * (if b = bone n then 1 else 0))) = c := by
+  classical
+  have h : ∀ a : BUnit n, ∑ b : BUnit n,
+      (c * ((if a = bone n then 1 else 0) * (if b = bone n then 1 else 0)))
+        = c * (if a = bone n then 1 else 0) := fun a => by
+    simp only [← mul_assoc]
+    rw [← Finset.mul_sum, Finset.sum_ite_eq']
+    simp
+  simp only [h]
+  rw [← Finset.mul_sum, Finset.sum_ite_eq']
+  simp
+
+theorem sum_const_two (n c : ℕ) :
+    ∑ _a : BUnit n, ∑ _b : BUnit n, c = 2 ^ n * (2 ^ n * c) := by
+  simp only [Finset.sum_const, Finset.card_univ, bUnit_card, smul_eq_mul]
+
+/-- **Total of birth (sealed).** `Σ birth` over ordered distinct imaginary pairs at level
+`n+1` equals `4·8^n − 28·2^n + 24 = 4(2^n+3)(2^n−1)(2^n−2)`, written without subtraction. -/
+theorem birthTotal_succ (n : ℕ) : birthTotal (n + 1) + 28 * 2 ^ n = 4 * 8 ^ n + 24 := by
+  classical
+  have hsum : ∑ a : BUnit n, ∑ b : BUnit n,
+      (birthQuad a b
+        + 8 * (if a = bone n then 1 else 0) + 8 * (if b = bone n then 1 else 0)
+        + 8 * (if a = b then 1 else 0)
+        + 2 ^ (n + 2) * ((if a = bone n then 1 else 0) * (if b = bone n then 1 else 0)))
+      = ∑ a : BUnit n, ∑ b : BUnit n,
+        (2 ^ (n + 2) + 24 * ((if a = bone n then 1 else 0) * (if b = bone n then 1 else 0))) :=
+    Finset.sum_congr rfl (fun a _ => Finset.sum_congr rfl (fun b _ => birthTerm_four_lifts a b))
+  simp only [Finset.sum_add_distrib] at hsum
+  rw [← birthTotal_split, sum_ind_left, sum_ind_right, sum_ind_diag, sum_ind_both,
+    sum_ind_both, sum_const_two] at hsum
+  have e2 : 2 ^ (n + 2) = 4 * 2 ^ n := by rw [pow_succ, pow_succ]; ring
+  have e8 : (8 : ℕ) ^ n = 2 ^ n * 2 ^ n * 2 ^ n := by
+    rw [← mul_pow, ← mul_pow]
+    norm_num
+  rw [e2] at hsum
+  rw [e8]
+  zify at hsum ⊢
+  linear_combination hsum
+
 /-! ## Floor E: the Zhilina bridge — graph degrees are birth values
 
 Zhilina (IJAC 31, 2021; Part I: DOI 10.1142/S0218196721500326,
@@ -2208,5 +2464,9 @@ theorem zhilina_degree_eq_birth {m : ℕ} (a b : BUnit m) (ha : a ≠ bone m) (h
 #print axioms line_inj
 #print axioms line_ne_neg
 #print axioms birth_closed
+#print axioms birth_four_lifts
+#print axioms birthTotal_succ
+
+#eval (List.range 6).map fun k => (k + 3, birthTotal (k + 3), 4 * 8 ^ (k + 2) - 28 * 2 ^ (k + 2) + 24)
 
 end Foldlaw
