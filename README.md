@@ -67,6 +67,8 @@ lake build            # builds Foldlaw and Foldlaw.Birth; prints every #print ax
 | **`finrank_ann_birth`** | **`dim ker L_{e_a + e_b ℓ} = birth a b`** at level `m+1` (annihilator dimension) |
 | `exists_annihilator` | at every level `≥ 4`, `e_a + e_b ℓ` is a zero divisor |
 | **`birth_closed`** | **closed form**: `birth a b = 2^(m−1) + T_m`, `T_(J+1) = 2^J − 4`, `T_k = σ_(k−1)(2T_(k−1)+4)`, `J = max lsb(a, b, a xor b)`, `σ` from the bits of `a xor b` (`lsbB`, `Jlev`, `Tclosed`) |
+| **`birth_four_lifts`** | **four-lift sum rule**: for distinct imaginary `a, b` at level `n`, `birth` of the four lifts `((a,0),(b,0)), ((a,0),(0,b)), ((0,a),(b,0)), ((0,a),(0,b))` sums to `2^(n+2)` — `birth a b` cancels |
+| **`birthTotal_succ`** | **total**: `Σ birth` over ordered distinct imaginary pairs at level `n+1` satisfies `S + 28·2^n = 4·8^n + 24`, i.e. `S = 4(2^n+3)(2^n−1)(2^n−2)`; no dependence on the level-`n` total. Edge count of the Zhilina graph: 168, 1848, 15960, 130200, 1046808, … |
 | `birthHistogram` | computable census; `#eval birthHistogram 6` reproduces the exhaustive 128-census bin by bin |
 | `birthClosed`, `closedCheck` | integer-indexed reading of the closed form; `#eval closedCheck m` compares it with `birth` on every pair (true through `m = 8`); not a theorem |
 | `zhilina_degree_eq_birth` | degree of the vertex `±(e_a + τ e_b ℓ)` in the two-sided zero-divisor graph on doubly pure unit-pair lines `= birth a b` (with `ann_two_sided`, `ann_char`, `ann_line_unique`, `line_inj`, `line_ne_neg`, `annLine_bilateral`, `lineElem_sq_ne_zero`) |
