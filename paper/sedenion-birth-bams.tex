@@ -1,0 +1,322 @@
+\documentclass{baustms}
+\citesort
+\DeclareMathOperator{\Reop}{Re}
+
+\theoremstyle{cupthm}
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{prop}[thm]{Proposition}
+\newtheorem{cor}[thm]{Corollary}
+\newtheorem{lemma}[thm]{Lemma}
+\numberwithin{equation}{section}
+
+\newcommand{\Ass}{\mathrm{Ass}}
+\newcommand{\HH}{\mathbb{H}}
+\newcommand{\OO}{\mathbb{O}}
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\Sed}{\mathbb{S}}
+\newcommand{\Imm}{\operatorname{Im}}
+\newcommand{\rk}{\operatorname{rk}}
+\newcommand{\one}[1]{\mathbf{1}[#1]}
+
+\begin{document}
+\runningtitle{Birth off the basis}
+\title{Birth off the basis: the anti-associator and associator kernels of every quaternionic pair of sedenions}
+\cauthor
+\author[1]{Demetrios C. Agourakis}
+\address[1]{Pontif\'icia Universidade Cat\'olica de S\~ao Paulo, Sorocaba, Brazil, and Faculdade S\~ao Leopoldo Mandic, Campinas, Brazil. ORCID 0009-0001-8671-8878\email{demetrios@agourakis.med.br}}
+\authorheadline{D.~C. Agourakis}
+
+\begin{abstract}
+The anti-associator kernel of a pair of basis units in a Cayley--Dickson algebra was computed in earlier work. This article leaves the basis. A quaternionic pair in the sedenions lies in an octonion subalgebra over a quaternion subalgebra, and both kernels split along that subalgebra and its orthogonal complement. Each meets the subalgebra in dimension~$4$. Two explicit matrices over the quaternions govern the complement, and all six combinations occur: anti-associator dimension $4$ or $12$, associator dimension $4$, $8$ or $12$. For alternative elements the splitting iterates up the tower, each block a multiple of~$4$. One level higher the congruence modulo~$8$ fails. An explicit pair in dimension~$32$ has anti-associator kernel of dimension~$8$, and at that level the kernel has dimension $4$, $8$, $12$, $20$ or $28$.
+\end{abstract}
+
+\classification[2020]{primary 17A75; secondary 17D05}
+\keywords{Cayley--Dickson algebra, sedenion, associator, quaternionic pair, alternative element}
+
+\maketitle
+
+\section{Setting and statement}
+
+Write $\Sed=\OO\times\OO$ with the Cayley--Dickson product
+\begin{equation}
+(x,y)(a,b)=(xa-b\,\overline{y},\;\overline{x}\,b+ay),\qquad \overline{(x,y)}=(\overline{x},-y).
+\label{eq:mul}
+\end{equation}
+An element $(a,b)$ is imaginary if and only if $a\in\Imm\OO$; $b$ is unrestricted. Write $b=b_0+\vec{b}$ for the real and imaginary parts of $b\in\OO$, and $u\times v$, $\langle u,v\rangle$ for the cross product and inner product of imaginary elements of a quaternion subalgebra, so that $uv=-\langle u,v\rangle+u\times v$ there. The associator is $[x,z,y]=(xz)y-x(zy)$, the anti-associator $W_{x,y}(z)=(xz)y+x(zy)$; $\Ass[x,y]=\ker[x,\cdot,y]$ and $\Ass'[x,y]=\ker W_{x,y}$, as in Biss--Dugger--Isaksen \cite{bdi} (BDI), Definition~8.1. A \emph{quaternionic pair} (BDI, Definition~4.6) is a pair of nonzero orthogonal imaginary elements with $[x,x,y]=0=[y,y,x]$.
+
+\begin{thm}[birth at the sedenions, off the basis]\label{thm:1}
+Let $(x,y)$ be a quaternionic pair in $\Sed$.
+\begin{enumerate}
+\item[\rm(i)] \emph{Containment.} There is a quaternion subalgebra $Q\subset\OO$ such that $x=(a,b)$, $y=(c,d)$ with $a,c\in\Imm Q$ and $b,d\in Q$. Orthogonality reads $\langle a,c\rangle+\langle b,d\rangle=0$.
+\item[\rm(ii)] \emph{Anti-associator.} With $r:=[c,b]+[a,d]=2(c\times\vec{b}+a\times\vec{d})\in\Imm Q$,
+\begin{equation}
+\dim\Ass'[x,y]=4+8\cdot\one{r=0}.
+\label{eq:N}
+\end{equation}
+\item[\rm(iii)] \emph{Associator.} Put $p=a\times c+\vec{b}\times\vec{d}$, $q=d_0\vec{b}-b_0\vec{d}$, $w=d_0 a-b_0 c$ (all in $\Imm Q$) and $t=\langle a,\vec{d}\rangle-\langle\vec{b},c\rangle\in\RR$, and let
+\begin{equation}
+M=\begin{pmatrix}p+q&w+t\\ w-t&p-q\end{pmatrix}
+\label{eq:M}
+\end{equation}
+act on $Q\times Q$ by left multiplication, $(u,v)\mapsto\bigl((p+q)u+(w+t)v,\;(w-t)u+(p-q)v\bigr)$. Then
+\begin{equation}
+\dim\Ass[x,y]=4+4\bigl(2-\rk_{\HH} M\bigr)=4+\dim_{\RR}\ker M\in\{4,8,12\}.
+\label{eq:A}
+\end{equation}
+In particular $\dim\Ass[x,y]=12$ if and only if $p=q=w=0$ and $t=0$; and $\rk_{\HH} M=1$ if and only if $M\neq 0$ and
+$|p+q|^2|p-q|^2+|w+t|^2|w-t|^2=2\Reop\bigl(\overline{(p-q)}(w-t)\overline{(p+q)}(w+t)\bigr)$
+(the Study determinant).
+\end{enumerate}
+\end{thm}
+
+\begin{cor}[values and defect]\label{cor:1}
+For every quaternionic pair of $\Sed$: $\dim\Ass'\in\{4,12\}$, $\dim\Ass\in\{4,8,12\}$, and all six combinations occur. The defect $\delta(x,y):=\dim\Ass[x,y]+\dim\Ass'[x,y]-16$ takes exactly the values $-8,-4,0,4,8$. A generic pair (Zariski-open in the pairs of $\Imm E$) has $(\dim\Ass',\dim\Ass)=(4,4)$, $\delta=-8$. The basis pairs, and every pair reached by BDI's lifting lemmas 8.7--8.10 from the octonions, have $\delta=0$.
+\end{cor}
+
+\begin{cor}[the mod-8 law off the basis]\label{cor:2}
+$\dim\Ass'[x,y]\equiv 4\pmod{8}$ for every quaternionic pair of $\Sed$, not only for pairs of basis units. The companion statement for the associator fails: $\dim\Ass[x,y]=8$ occurs (for instance $x=e_1-e_8$, $y=e_2-e_9$).
+\end{cor}
+
+\begin{cor}[alternativity reading]\label{cor:3}
+For $z=(a,b)\in\Imm\Sed$ let $\nu(z)=[a,b]\in\Imm\OO$. By Moreno \cite{moreno} (Theorem~3.3 with Proposition~3.1), $z$ is alternative if and only if $\nu(z)=0$. Since $\nu$ is quadratic, $r=\nu(x+y)-\nu(x)-\nu(y)$, so for a quaternionic pair of alternative elements, the setting of BDI Section~11,
+\[
+\dim\Ass'[x,y]=\begin{cases}12& \text{if $x+y$ is alternative,}\\ 4& \text{otherwise,}\end{cases}
+\]
+and by BDI Proposition~11.1 the annihilator of $x+y\,\ell'$ in $A_5$ has that dimension.
+\end{cor}
+
+\begin{cor}[propagation]\label{cor:4}
+By BDI Lemmas 8.7--8.10, the four lifts of $(x,y)$ to $A_5$ have $(\dim\Ass',\dim\Ass)$ equal to $(2N+4,\,2A-4)$ for the same-side lifts and $(2A-4,\,2N+4)$ for the cross lifts, where $(N,A)$ are the values of Theorem~\ref{thm:1}; hence $\delta$ doubles at each lift and the pairs of $A_m$ obtained by lifting from $\Sed$ have defects $2^{m-4}\cdot\{-8,-4,0,4,8\}$.
+\end{cor}
+
+\section{Proof}
+
+\begin{lemma}[containment]\label{lem:A}
+If $x,y\in\Imm\Sed$ satisfy $[x,x,y]=0=[y,y,x]$, then $x,y\in Q\times Q$ for some quaternion subalgebra $Q\subset\OO$.
+\end{lemma}
+
+\begin{proof}
+Let $x=(a,b)$, $y=(u,v)$ with $a\in\Imm\OO$. By \eqref{eq:mul}, $x^2=(a^2-b\overline{b},\,\overline{a}b+ab)=-(|a|^2+|b|^2)$, real. Also $xy=(au-v\overline{b},\,-av+ub)$ and, using alternativity of $\OO$ in the forms $a(au)=a^2 u$, $(ub)\overline{b}=u(b\overline{b})$, $(v\overline{b})b=v(\overline{b}b)$,
+\[
+x(xy)=\bigl(-(|a|^2+|b|^2)u+[a,v,\overline{b}],\; -(|a|^2+|b|^2)v+[a,u,b]\bigr).
+\]
+Hence $[x,x,y]=x^2 y-x(xy)=0$ if and only if $[a,u,b]=0$ and $[a,v,\overline{b}]=-[a,v,b]=0$: both components of $y$ lie in $\Ass_{\OO}[a,b]=\{z\in\OO:[a,z,b]=0\}$. When $\Imm a$ and $\Imm b$ are linearly independent this kernel is the quaternion subalgebra $Q(a,b)=\operatorname{span}\{1,a,b,ab\}$ (the associator depends only on the imaginary parts; after an orthogonalisation it is BDI Lemma~8.5, $\Ass_{\OO}=\HH$). So: if $x$ is \emph{nondegenerate} (imaginary parts of $a$, $b$ independent), $u,v\in Q(a,b)$ and $y\in Q(a,b)\times Q(a,b)$; if $y$ is nondegenerate too, symmetrically $a,b\in Q(u,v)$, so $Q(a,b)=Q(u,v)$. If $y$ is degenerate (imaginary parts of $u$, $v$ dependent), it lies in $Q(a,b)\times Q(a,b)$ anyway. If both are degenerate, the imaginary parts of $a,b,u,v$ span at most two dimensions and lie in a common $Q$. In every case $x,y\in Q\times Q$.
+\end{proof}
+
+\begin{lemma}[splitting]\label{lem:B}
+Let $Q\subset\OO$ be a quaternion subalgebra, $E=Q\times Q$ and $E^\perp=Q^\perp\times Q^\perp$. For $x,y\in E$ the operators $W_{x,y}$ and $[x,\cdot,y]$ preserve $E$ and $E^\perp$; $E$ is the Cayley--Dickson double of $Q$, hence an octonion algebra; and for a quaternionic pair in $E$ both kernels meet $E$ in dimension exactly~$4$.
+\end{lemma}
+
+\begin{proof}
+$Q\cdot Q^\perp\subset Q^\perp$ and $Q^\perp\cdot Q\subset Q^\perp$ in $\OO$, so \eqref{eq:mul} gives $E\cdot E^\perp\subset E^\perp$, $E^\perp\cdot E\subset E^\perp$, and $E\cdot E\subset E$. The product \eqref{eq:mul} restricted to $Q\times Q$ is the Cayley--Dickson double of $Q\cong\HH$, so $E\cong\OO$. In an octonion algebra, for orthogonal imaginary $x,y$, $\Ass[x,y]=\HH(x,y)$ and $\Ass'[x,y]=\HH(x,y)^\perp$ (BDI Lemma~8.5), each of dimension~$4$.
+\end{proof}
+
+\begin{lemma}[the $E^\perp$ blocks]\label{lem:C}
+Choose $e\in Q^\perp$ a unit and write $Q^\perp=Qe$, so that $\OO=Q\times Q$ with \eqref{eq:mul} and $E^\perp=\{((0,u'),(0,v')):u',v'\in Q\}$. For $x=((a,0),(b,0))$, $y=((c,0),(d,0))$ with $a,c\in\Imm Q$, $b,d\in Q$, $\langle a,c\rangle+\langle b,d\rangle=0$,
+\begin{align*}
+W_{x,y}(u',v')&=(rv',\,-ru'),\\
+[x,(u',v'),y]&=2\bigl((p+q)u'+(w+t)v',\;(w-t)u'+(p-q)v'\bigr)=2M(u',v'),
+\end{align*}
+with $r,p,q,w,t$ as in Theorem~\ref{thm:1}.
+\end{lemma}
+
+\begin{proof}
+This is a direct expansion of \eqref{eq:mul} at the two levels. Writing $z=(U,V)$ with $U=(0,u')$, $V=(0,v')$ one finds $xz=((0,-au'-\overline{b}v'),(0,av'+bu'))$ and $zy=((0,cu'+\overline{d}v'),(0,-du'-cv'))$; multiplying out $(xz)y$ and $x(zy)$ and collecting, the coefficient of $u'$ in the first component of $W$ is $-(ac+ca)+(\overline{d}b+\overline{b}d)=2\langle a,c\rangle+2\langle b,d\rangle=0$, the coefficient of $v'$ in the second component is likewise $0$, and the two remaining coefficients are $[\overline{b},c]+[\overline{d},a]=[c,b]+[a,d]=r$ and its negative. For the associator the four coefficients are $[a,c]+2\Imm(\overline{d}b)$, $\{\overline{d},a\}-\{\overline{b},c\}$, $\{a,d\}-\{b,c\}$ and $[a,c]+2\Imm(d\overline{b})$; expanding $b=b_0+\vec{b}$, $d=d_0+\vec{d}$ gives $2(p+q)$, $2(w+t)$, $2(w-t)$, $2(p-q)$.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:1}]
+(i) is Lemma~\ref{lem:A}. By Lemma~\ref{lem:B}, $\ker W_{x,y}=(\ker W_{x,y}\cap E)\oplus(\ker W_{x,y}\cap E^\perp)$, the first summand of dimension~$4$, and likewise for the associator. By Lemma~\ref{lem:C} the restriction to $E^\perp$ is left multiplication on $Q\times Q\cong\HH^2$ by a $2\times 2$ quaternion matrix; left multiplication commutes with right scalar multiplication by $Q$, so each kernel is a right $Q$-subspace of $Q^2$ and has real dimension $0$, $4$, or $8$. For $W$ the matrix is $\bigl(\begin{smallmatrix}0&r\\-r&0\end{smallmatrix}\bigr)$: kernel $Q^2$ if $r=0$, and $0$ if $r\neq 0$. This is \eqref{eq:N}. For the associator the matrix is $M$ and \eqref{eq:A} is the statement that $\dim_{\RR}\ker M=4(2-\rk_{\HH} M)$; the Study-determinant form of the rank-one condition is the usual one for $2\times 2$ quaternion matrices, $|\alpha|^2|\delta|^2+|\beta|^2|\gamma|^2-2\Reop(\overline{\delta}\,\gamma\,\overline{\alpha}\,\beta)=|\alpha|^2|\delta-\gamma\alpha^{-1}\beta|^2$ when $\alpha\neq 0$.
+\end{proof}
+
+\begin{proof}[Proof of the corollaries]
+The value sets are read off \eqref{eq:N} and \eqref{eq:A}. All six combinations occur: $(4,4)$ at $(e_1-e_2,e_3-e_9)$; $(4,8)$ at $x=-e_2+e_3-e_9+e_{10}$, $y=-e_1-e_3-e_9-e_{11}$; $(4,12)$ at $(e_1,e_{10})$; $(12,4)$ at $(e_1,e_2)$; $(12,8)$ at $(e_1-e_8,e_2-e_9)$; $(12,12)$ at $(e_1-e_{10},e_1+e_{10})$. Genericity: $r\neq 0$ and $\rk_{\HH} M=2$ are open conditions and hold at the first witness. The doubling itself is immediate: $(2N+4)+(2A-4)-32=2(N+A-16)$. That BDI's Lemmas 8.7--8.10 send $(N,A)$ to $(2N+4,2A-4)$ or $(2A-4,2N+4)$ is their statement, checked in this convention (item~(7) below); together with $\delta=0$ at Lemma~8.5 this gives Corollary~\ref{cor:4} and the last sentence of Corollary~\ref{cor:1}. Corollary~\ref{cor:2} is immediate. For Corollary~\ref{cor:3}, Moreno's Theorem~3.3 says that a pure $(a,b)$ with $a$, $b$ pure is alternative if and only if $a$, $b$ are alternative (automatic in $\OO$) and linearly dependent, and his Proposition~3.1 removes the real part of $b$; together, $(a,b)$ with $a$ pure is alternative if and only if $[a,b]=0$. Bilinearity gives $r=\nu(x+y)-\nu(x)-\nu(y)$.
+\end{proof}
+
+\section{Remarks}
+
+\paragraph{Where the basis sits.}
+For basis units $b,d\in\{0\}\cup\{\pm e_k\}$ and $a,c\in\{0\}\cup\{\pm e_j\}$ with at most one of $a$, $b$ and one of $c$, $d$ nonzero. One checks that then $\rk_{\HH} M\in\{0,2\}$ and that $\dim\Ass=16-\dim\Ass'$: the complement identity $\Ass\oplus\Ass'=\Sed$ used to write the differing clause as $2^{n+1}-2N-4$ is the statement $\delta=0$, and Theorem~\ref{thm:1} shows it is a property of the defect-zero stratum, not of quaternionic pairs in general.
+
+\paragraph{What decides $\Ass'$.}
+Within a fixed plane $\Pi=\operatorname{span}\{x,y\}$ the associator kernel is constant (the associator is bilinear and antisymmetric in $x,y$) but $\Ass'$ is not: in $\HH(e_1,e_{10})$ the pair $(e_1,e_{10})$ has $\dim\Ass'=4$ while the pair $(e_1-e_{10},e_1+e_{10})$ in the same plane has $12$. Theorem~\ref{thm:1} locates the jump: $r$ is a symmetric bilinear form on $\Imm E$ with values in $\Imm Q$, $r(z,z)=2\nu(z)$, and $\Ass'$ is large exactly on its isotropic pairs. Moreno's classification of alternative elements, which does not mention kernels, is therefore the kernel theory of $W$ at the sedenions.
+
+\paragraph{Positive defect.}
+If $\delta>0$ then $\Ass\cap\Ass'\neq 0$, and any nonzero $z$ in the intersection satisfies $(xz)y=0=x(zy)$; so $xz$ is a zero divisor or zero. Negative defect has no such reading; it is the generic case.
+
+\paragraph{What this does not do.}
+It does not give the birth function for quaternionic pairs of $A_5$ and beyond that are not lifts: Lemma~\ref{lem:A} uses alternativity of the components, which fails in $\Sed$. Section~\ref{sec:tower} recovers the containment, and a block decomposition, for pairs of alternative elements at every level; pairs with a non-alternative member at $m\ge 5$ remain not established. It does not describe the Zariski strata of $\rk_{\HH} M=1$ in invariant terms beyond the Study determinant. Nothing here is formalized: the development in Lean of the basis computation does not contain alternativity of $A_3$, which Lemmas~\ref{lem:A} and~\ref{lem:B} need.
+
+\section{Verification}
+
+The tools named in the acknowledgement were used to propose candidate errors in this argument. That reading is not a step of the proof. What follows is exact integer arithmetic (the multiplication \eqref{eq:mul} by structural recursion, ranks modulo the primes $1\,000\,003$ and $1\,048\,573$).
+(1)~All $7\,413$ quaternionic pairs of weight two: Lemma~\ref{lem:A} holds for every pair; \eqref{eq:N} and \eqref{eq:A} agree with the direct $16\times 16$ nullities for every pair; the values are $(4,4)\times 4200$, $(4,12)\times 924$, $(12,4)\times 1827$, $(12,8)\times 378$, $(12,12)\times 84$.
+(2)~$20\,000$ random integer pairs in $E$ for $Q=\HH(e_1,e_2)$ with entries in $[-3,3]$: \eqref{eq:N} and \eqref{eq:A} agree in every case; values $(4,4)\times 19679$, $(4,8)\times 56$, $(4,12)\times 5$, $(12,4)\times 233$, $(12,8)\times 26$, $(12,12)\times 1$. The combination $(4,8)$, absent at weight two, appears.
+(3)~$60\,000$ further pairs: $\dim\ker M=8$ exactly when $p=q=w=t=0$.
+(4)~The octonion fact of Lemma~\ref{lem:A}, $\dim\Ass_{\OO}[a,b]=4$ for independent imaginary parts: $3000/3000$ random pairs.
+(5)~Moreno's criterion in the convention \eqref{eq:mul}: alternative if and only if $[a,b]=0$, $4000/4000$ random imaginary elements, $2007$ of them alternative.
+(6)~Inside the coordinate quaternion $\HH(e_1,e_{10})$: of the $546$ primitive integer orthogonal pairs with entries in $[-3,3]$, $500$ have $(4,4)$, $36$ have $(4,12)$, $8$ have $(12,4)$, $2$ have $(12,12)$, exactly the strata $r=0$ and $\rk_{\HH} M$ predict.
+(7)~Corollary~\ref{cor:4}'s lift rule: the six witness pairs and $400$ random quaternionic pairs of $E$, all four lifts each, $406/406$; every lift is again a quaternionic pair.
+(8)~Lemma~\ref{lem:D}: alternative if and only if (I) and (II), on $150$ elements of $A_5$ and $150$ of $A_6$ drawn from three families, $300/300$; property (N), dimension $2$, for $1000$ dense and $1008$ sparse pure elements of $A_4$, $300+329$ of $A_5$, $60+123$ of $A_6$.
+(9)~The identity $[u,b,b]=-[b,b,u]$ cited in Lemma~\ref{lem:D}, and flexibility $[b,u,b]=0$: $400/400$ random elements in each of $A_3$, $A_4$, $A_5$.
+
+\noindent\textit{Status of Section~\ref{sec:tower} is stated there.}
+Theorem~\ref{thm:1} and Corollaries~\ref{cor:1}--\ref{cor:3} are proved above and checked on every step. For Corollary~\ref{cor:4} the doubling identity is proved here; the lift map is BDI's, checked in this convention on $406$ pairs. The literature read for this article is BDI \cite{bdi} and Moreno \cite{moreno}. Later work on sedenion zero divisors was not searched, and no priority claim is made.
+
+\section{The tower, for pairs of alternative elements}\label{sec:tower}
+
+Lemma~\ref{lem:A} does not survive the sedenions as stated, because its proof uses alternativity of the components. For the class of pairs that BDI's Section~11 is about, quaternionic pairs of alternative elements, Moreno's classification supplies the containment at every level, and with it a decomposition of both kernels along a tower of doubled subalgebras.
+
+\begin{lemma}[alternative elements in the convention \eqref{eq:mul}]\label{lem:D}
+Let $n\ge 3$ and $x=(a,b)\in A_{n+1}$ with $a\in\Imm A_n$, $b\in A_n$. Then $x$ is alternative if and only if
+\begin{equation}
+\text{\rm(I)}\quad [a,u,b]=0\qquad\text{and}\qquad\text{\rm(II)}\quad [a,a,u]+[b,b,u]=0
+\label{eq:I}
+\end{equation}
+for all $u\in A_n$. Suppose moreover that $A_n$ satisfies {\rm(N)}: for every nonzero pure $a$, $\{b:[a,u,b]=0\text{ for all }u\}=\RR\oplus\RR a$. Then $x$ is alternative if and only if either $a\neq 0$ is alternative and $b\in\RR\oplus\RR a$, or $a=0$ and $\Imm b$ is alternative. Property {\rm(N)} holds at $n=3$ (BDI Lemma~8.5), at $n=4$ by Theorem~\ref{thm:1}, and for every $n\ge 4$ it is Moreno's Theorem~2.3 \cite{moreno}.
+\end{lemma}
+
+\begin{proof}
+$x^2=-(|a|^2+|b|^2)$ is real. For $z=(u,v)$ the raw expansion in the proof of Lemma~\ref{lem:A}, before alternativity of $\OO$ was used, is
+\[
+x(xz)=\bigl(a(au)-(ub)\overline{b}+[a,v,\overline{b}],\; a(av)-(v\overline{b})b+[a,u,b]\bigr).
+\]
+So $[x,x,z]=0$ for all $z$ if and only if, separating $u$ and $v$, $[a,v,\overline{b}]=0$ and $[a,u,b]=0$ for all $u,v$, and $a(au)-(ub)\overline{b}=-|x|^2 u$, $a(av)-(v\overline{b})b=-|x|^2 v$. Since $\overline{b}=2b_0-b$ and the associator kills real entries, the first-order conditions are (I). With $a^2=-|a|^2$, $b\overline{b}=|b|^2$ and flexibility of Cayley--Dickson algebras ($[u,b,b]=-[b,b,u]$; Moreno, Section~1), $a(au)+|a|^2 u=-[a,a,u]$ and $(ub)\overline{b}-|b|^2 u=[u,b,\overline{b}]=-[u,b,b]=[b,b,u]$, so the second-order conditions are (II). Given (N): if $a\neq 0$, (I) gives $b=s+ta$ and (II) becomes $(1+t^2)[a,a,u]=0$; if $a=0$, (II) is $[b,b,u]=0$. Conversely both families satisfy (I) ($[a,u,a]=0$ by flexibility) and (II). For (N) at $n=4$: let $a\neq 0$ be pure in $\Sed$ and $[a,u,b]=0$ for all $u$; put $b'=\Imm b-(\langle\Imm b,a\rangle/|a|^2)a$, so $[a,u,b']=0$ for all $u$. If $b'\neq 0$ then $(a,b')$ is a pair of nonzero orthogonal imaginary elements with $[a,a,b']=0$ ($u=a$) and $[b',b',a]=-[a,b',b']=0$ ($u=b'$): a quaternionic pair with $\Ass[a,b']=\Sed$, of dimension~$16$, contradicting the bound~$12$ of Theorem~\ref{thm:1}(iii). Hence $b'=0$.
+\end{proof}
+
+\begin{thm}[tower decomposition]\label{thm:2}
+Let $m\ge 3$ and let $(x,y)$ be a quaternionic pair of alternative elements of $A_m$. Then:
+\begin{enumerate}
+\item[\rm(i)] there is a quaternion subalgebra $Q\subset\OO=A_3$ such that $x,y\in E_m:=Q^{2^{m-3}}$, the $(m-3)$-fold Cayley--Dickson double of $Q$ inside $A_m$; $E_m$ is a subalgebra isomorphic to $A_{m-1}$;
+\item[\rm(ii)] $E_m^\perp=(Q^\perp)^{2^{m-3}}$ is invariant under $W_{x,y}$ and $[x,\cdot,y]$, so
+\begin{align*}
+\dim\Ass'_{A_m}[x,y]&=\dim\Ass'_{E_m}[x,y]+\beta_m,\\
+\dim\Ass_{A_m}[x,y]&=\dim\Ass_{E_m}[x,y]+\alpha_m,
+\end{align*}
+where $\beta_m,\alpha_m$ are the kernel dimensions of the restrictions to $E_m^\perp$; both restrictions commute with the right action of $Q$ on $(Q^\perp)^{2^{m-3}}\cong\HH^{2^{m-3}}$, so $\alpha_m,\beta_m\in 4\mathbb{Z}$ and $0\le\alpha_m,\beta_m\le 2^{m-1}$;
+\item[\rm(iii)] under an isomorphism $E_m\cong A_{m-1}$ the pair stays a quaternionic pair of alternative elements, so {\rm(i)--(ii)} iterate down to $E_4\cong A_3=\OO$, where $\Ass'=\HH(x,y)^\perp$ and $\Ass=\HH(x,y)$ (BDI Lemma~8.5): with $\beta_k,\alpha_k$ the kernels of the restrictions to the complement of $E_k$ in $A_k$, transported along the isomorphisms,
+\[
+\dim\Ass'[x,y]=4+\sum_{k=4}^{m}\beta_k,\qquad
+\dim\Ass[x,y]=4+\sum_{k=4}^{m}\alpha_k.
+\]
+At $k=4$, $\beta_4=8\cdot\one{r=0}$ and $\alpha_4=4(2-\rk_{\HH} M)$ by Theorem~\ref{thm:1}.
+\end{enumerate}
+\end{thm}
+
+\begin{proof}
+By Lemma~\ref{lem:D}, equivalently Moreno \cite{moreno}, Theorem~3.3 with Proposition~3.1, for $n\ge 3$ a pure element of $A_{n+1}$ is alternative if and only if it has the form $(p,s+tp)$ with $p$ a pure alternative element of $A_n$ and $s,t\in\RR$, or the form $(0,s+p)$. For $n=3,4$ this is proved above from BDI Lemma~8.5 and Theorem~\ref{thm:1}; for $n\ge 5$ it imports property (N) from Moreno's Theorem~2.3. Hence an alternative $x\in A_m$ lies in $C_p\times C_p$ with $C_p=\operatorname{span}\{1,p\}$, and $y$ in $C_{p'}\times C_{p'}$; both lie in $B\times B$ for any subalgebra $B\subset A_{m-1}$ containing $p,p'$. Now $p,p'$ are themselves pure alternative elements of $A_{m-1}$, so they lie in doubles of the same shape over pure alternative elements of $A_{m-2}$, and $B$ may be taken of the form $B_1\times B_1$. Descending to $A_3=\OO$, where every element is alternative, we reach pure imaginary octonions and may take any quaternion subalgebra containing them. Unwinding, $x,y\in Q^{2^{m-3}}=E_m$. This is (i). For (ii): $Q\cdot Q^\perp\subset Q^\perp$ and $Q^\perp\cdot Q\subset Q^\perp$ in $\OO$, and \eqref{eq:mul} only ever multiplies coordinates, so $E_m\cdot E_m^\perp\subset E_m^\perp$ and $E_m^\perp\cdot E_m\subset E_m^\perp$; the restriction of $W_{x,y}$ to $E_m^\perp$ is built from left and right multiplications by elements of $E_m$, which act on each $Q^\perp$-coordinate by left multiplications by elements of $Q$, and these commute with right multiplication by $Q$. (iii) is immediate from (i), (ii), and Theorem~\ref{thm:1}.
+\end{proof}
+
+\begin{cor}[the bin digits are blocks]\label{cor:5}
+For a pair of basis units of $A_m$, $m\ge 5$, define $\varepsilon_k\in\{0,1\}$ by writing the basis birth number as $4+\sum_{k=4}^{m}2^{k-1}\varepsilon_k$. At $m=5$, for all $465$ pairs, $\beta_k=2^{k-1}\varepsilon_k$ and $\alpha_k=2^{k-1}(1-\varepsilon_k)$, $k=4,5$: each block of the tower is either $0$ or the whole complement, and the digit at position $k$ records which. This is observed at $m=5$, exhaustively on the basis. The dynamics of those digits for general $m$ is not established here.
+\end{cor}
+
+On $4002$ random quaternionic pairs of alternative elements of $A_5$ (Moreno's parametrisation, integer parameters in $[-2,2]$), containment in $Q^4$, invariance of $E_5^\perp$, and additivity of both kernels hold in every case. The values seen there are $(\dim\Ass',\dim\Ass)=(4,4)$ for $3215$ pairs, $(12,4)$ for $481$, $(28,4)$ for $300$, $(4,12)$ for $4$, $(12,12)$ for $1$, $(4,28)$ for $1$, with $\beta_5\in\{0,8,16\}$. That sample missed a stratum. The generic pair at level~$5$ still has $(4,4)$, defect $-24$.
+
+\begin{prop}[the mod-8 law stops at the sedenions]\label{prop:6}
+Theorem~\ref{thm:2} gives $\beta_m\in 4\mathbb{Z}$. The stronger congruence $\beta_m\in 8\mathbb{Z}$, and with it $\dim\Ass'\equiv 4\pmod{8}$ for every quaternionic pair of alternative elements, is false at $m=5$. The elements
+\[
+x=e_3-e_{16}-2e_{19},\qquad y=e_2-e_3-2e_{10}+2e_{11}-e_{16}
+\]
+of $A_5$ are alternative, orthogonal, and anticommute, and
+\[
+\dim\Ass'[x,y]=8,\qquad \dim\Ass[x,y]=4,\qquad \beta_5=4.
+\]
+The $4$ in the top block is the kernel of a $2\times 2$ Hermitian matrix over $\HH$ of Study determinant zero and not itself zero; right $\HH$-linearity accounts for the factor $4$ and does not double it.
+\end{prop}
+
+\begin{proof}
+Alternativity, orthogonality, and the anticommutator are finite checks in the product \eqref{eq:mul}. The three dimensions are the nullities of integer matrices, computed by Gaussian elimination modulo $1\,000\,003$ and modulo $1\,048\,573$, which agree. In the notation of Theorem~\ref{thm:3} below: $p=-4e_1$, $a=c=4e_1$, $b=8$, so
+\[
+P=\begin{pmatrix}0&-4e_1\\ 4e_1&0\end{pmatrix},\qquad
+B=\begin{pmatrix}4e_1&8\\ -8&4e_1\end{pmatrix};
+\]
+$P$ is invertible with $P^2=16$, and the Schur complement $S=P+BP^{-1}B$ equals $-16\bigl(\begin{smallmatrix}1&-e_1\\ e_1&1\end{smallmatrix}\bigr)$, whose kernel is $\{(e_1 g,\, g):g\in\HH\}$, a right $\HH$-line, of real dimension~$4$.
+\end{proof}
+
+\begin{prop}[the top block at level $5$]\label{prop:7}
+Let $(x,y)$ be a quaternionic pair of alternative elements of $A_5$. Then $\beta_5\in\{0,4,8,16\}$. All four values occur. In particular $12$ does not.
+\end{prop}
+
+\begin{proof}
+By Theorem~\ref{thm:2} the pair lies in $E=Q^4$ for some quaternion subalgebra $Q\subset\OO$. An automorphism of $\OO$ carries $Q$ to $\HH(e_1,e_2)$ and extends to $A_5$ by acting on each octonion coordinate; it preserves $W$ and the top doubling, so it is enough to treat $E=\operatorname{span}\{e_i:i\in\{0,1,2,3,8,9,10,11,16,17,18,19,24,25,26,27\}\}$. On the complement $F\times F$, with $F\cong\HH^2$, the operator $W_{x,y}$ is the anticommutator of the two $4\times 4$ matrices over $\HH$ that the doubling formula assigns to left multiplication by $x$ and right multiplication by $y$ (the identity is bilinear, and it holds on all $256$ pairs of basis elements of $E$). For an orthogonal pair with no component along $1$, that anticommutator has the shape $\bigl(\begin{smallmatrix}P&B\\ -B&P\end{smallmatrix}\bigr)$ with $P=\bigl(\begin{smallmatrix}0&p\\ -p&0\end{smallmatrix}\bigr)$, the operator of Theorem~\ref{thm:3}: the shape holds on every pair of distinct imaginary basis elements, and on each square $e_i^2$ the failure is exactly $2I$, which cancels against $\langle x,y\rangle=0$. If $p\neq 0$ then $P$ is invertible and the kernel is the kernel of a single $2\times 2$ matrix over $\HH$, hence of real dimension $0$, $4$, or $8$. If $p=0$ the kernel is a square of the kernel of the off-diagonal block, hence of real dimension $0$, $8$, or $16$. The four values occur: $0$, $8$, and $16$ in the level-$5$ census, and $4$ by Proposition~\ref{prop:6}.
+\end{proof}
+
+\section{Level $5$ closed}
+
+By Theorem~\ref{thm:2} and the $G_2$ reduction of Proposition~\ref{prop:7} we may take $Q=\HH(e_1,e_2)$, so the complement of $E_5$ in $A_5$ is $F\times F$ with $F=Q^\perp\times Q^\perp$. Identify each copy of $Q^\perp$ with $\HH$ by $e_{4+i}\leftrightarrow e_i$ ($i=0,1,2,3$). The operators below are $2\times 2$ matrices over $\HH$ acting on columns by left multiplication of the entries. By Moreno's parametrisation an alternative pure element of $A_5$ lying in $E_5$ is
+\begin{equation}
+x=(\alpha,\, s+t\alpha),\qquad \alpha=(X_0,\,\sigma+\tau X_0),\qquad X_0\in\Imm Q,\quad s,t,\sigma,\tau\in\RR,
+\label{eq:nf}
+\end{equation}
+and likewise $y$ with $Y_0,s',t',\sigma',\tau'$. Write $[u,v]=uv-vu$ and $\langle u,v\rangle$ for the inner product of imaginary quaternions.
+
+\begin{thm}[the top block at level $5$, closed form]\label{thm:3}
+Let $(x,y)$ be a quaternionic pair of alternative elements of $A_5$ in the normal form \eqref{eq:nf}. Then:
+\begin{enumerate}
+\item[\rm(i)] $\dim\Ass'_{E_5}[x,y]\in\{4,12\}$, and it is $12$ exactly when $t=t'$ or $\alpha$ and $\alpha'$ are parallel.
+\item[\rm(ii)] On $F\times F$, $W_{x,y}(f,g)=(Pf+Bg,\,-Bf+Pg)$ with
+\begin{align*}
+P&=\begin{pmatrix}0&p\\ -p&0\end{pmatrix},&
+B&=\begin{pmatrix}a&b\\ -\overline{b}&c\end{pmatrix},\\
+p&=(1+tt')(\tau'-\tau)[X_0,Y_0],\\
+b&=(t'-t)\bigl(2(\tau'-\tau)\langle X_0,Y_0\rangle+2\sigma' X_0-2\sigma Y_0\bigr),\\
+a&=(t'-t)\bigl((1+\tau\tau')[X_0,Y_0]+2(\sigma'\tau X_0-\sigma\tau' Y_0)\bigr),\\
+c&=(t'-t)\bigl((1+\tau\tau')[X_0,Y_0]-2(\sigma'\tau X_0-\sigma\tau' Y_0)\bigr).
+\end{align*}
+\item[\rm(iii)] $\beta_5=\dim_{\RR}\ker(P+BP^{-1}B)\in\{0,4,8\}$ if $p\neq 0$, and $\beta_5=2\dim_{\RR}\ker B\in\{0,8,16\}$ if $p=0$.
+\item[\rm(iv)] If $\dim\Ass'_{E_5}[x,y]=12$ then $B=0$ and $\beta_5=16\cdot\one{p=0}$; for parallel $\alpha,\alpha'$ this gives $\beta_5=16$.
+\item[\rm(v)] Consequently $\dim\Ass'[x,y]\in\{4,8,12,20,28\}$. All five values occur; $16$ and $24$ do not.
+\end{enumerate}
+\end{thm}
+
+\begin{proof}
+(i) is Theorem~\ref{thm:1} inside $E_5\cong A_4$: the pair is $(\alpha,s+t\alpha)$, $(\alpha',s'+t'\alpha')$ with $\alpha,\alpha'$ pure in the octonion algebra $E_4=Q\times Q$, so $r=(t-t')[\alpha',\alpha]$, which vanishes if and only if $t=t'$ or $[\alpha,\alpha']=0$, and two pure octonions commute if and only if they are parallel.
+
+(ii) The map $(x,y)\mapsto W_{x,y}|_{F\times F}$ is bilinear, and so are the right-hand sides once $x,y$ are written in the sixteen $Q$-coordinates $(X_0,X_1,X_2,X_3)$, $(Y_0,\ldots,Y_3)$ of $E_5=Q^4$:
+\begin{align*}
+p&=[X_0,Y_1]-[X_1,Y_0]+[X_2,Y_3]-[X_3,Y_2],\\
+a,c&=K\pm J,\\
+K&=[X_0,Y_2]+[X_1,Y_3]-[X_2,Y_0]-[X_3,Y_1],\\
+J&=(X_1\overline{Y_3}-\overline{X_1}Y_3)-(X_3\overline{Y_1}-\overline{X_3}Y_1),\\
+b&=[X_0,Y_3]-[X_1,Y_2]-[X_2,Y_1]+[X_3,Y_0]\\
+&\quad+2X_0\overline{Y_3}-X_2\overline{Y_1}-\overline{X_1}Y_2+2\overline{X_3}Y_0+\overline{X_1}\,\overline{Y_2}+\overline{X_2}\,\overline{Y_1},
+\end{align*}
+and the lower-left entry of $B$ is $-\overline{b}$. A bilinear identity holds if and only if it holds on pairs of basis vectors; the block shape, the left-multiplication form of every block, and these four formulas were checked on all $15\times 15$ pairs of imaginary basis units of $E_5$ (on the diagonal pairs $e_i,e_i$ the shape fails by exactly $2I$ in $P$, which is cancelled by $\langle x,y\rangle=0$, as in Proposition~\ref{prop:7}). Substituting $X_1=\sigma+\tau X_0$, $X_2=s+t X_0$, $X_3=t X_1$ and the primed analogues gives the displayed forms. The same identities were rechecked on $6000$ further alternative pairs, as were (i), (iv), additivity, and the value of $\beta_5$ by direct nullity.
+
+(iii) $P^2=|p|^2 I$ since $p$ is a commutator, hence pure. If $p\neq 0$, the kernel equations $Pf+Bg=0=-Bf+Pg$ give $f=-P^{-1}Bg$ and then $(P+BP^{-1}B)g=0$; the kernel is the graph of $-P^{-1}B$ over $\ker(P+BP^{-1}B)$, a right $\HH$-submodule of $\HH^2$. The order matters: $P+P^{-1}BPB$ has a different kernel unless $P$ and $B$ commute, and gives $0$ on the pair of Proposition~\ref{prop:6}. Direct comparison of $\dim\ker(P+BP^{-1}B)$ with the nullity of $W$ confirms the formula on that pair and on $14\,120$ random pairs with $p\neq 0$. If $p=0$ the equations decouple into $Bg=0=Bf$.
+
+(iv) If $t=t'$, every entry of $B$ carries the factor $t'-t$. If $\alpha'=\lambda\alpha$ then $Y_0=\lambda X_0$, $\sigma'=\lambda\sigma$, $\tau'=\tau$, so $[X_0,Y_0]=0$ and $\sigma'\tau X_0-\sigma\tau' Y_0=0$, whence $p=a=b=c=0$. With $B=0$ the operator is $P\oplus P$, invertible if $p\neq 0$ and zero if $p=0$.
+
+(v) From (i), (iii), (iv): if $\dim\Ass'_{E_5}=12$ the total is $12$ or $28$; if it is $4$ the total is $4+\beta_5\in\{4,8,12,20\}$. Realizations: $4$ is generic; $8$ is Proposition~\ref{prop:6}; $12$ occurs both as $12+0$ and as $4+8$; $20$ and $28$ occur on the basis ($84$ and $171$ pairs, Corollary~\ref{cor:5}).
+\end{proof}
+
+\paragraph{Remark.}
+Formulas (ii) and statements (iii)--(iv) do not use alternativity: they hold for every orthogonal imaginary pair of $E_5=Q^4$ (checked on $6000$ such pairs with arbitrary $X_1,Y_1$). Among those, $(\dim\Ass'_{E_5},\beta_5)=(4,16)$ occurs, for instance
+\begin{align*}
+x&=-3e_1+2e_3-2e_9-3e_{11}+3e_{17}-2e_{19}+2e_{25}+3e_{27},\\
+y&=-2e_1-2e_9-e_{11}+2e_{16}-2e_{17}-2e_{25}-e_{27},
+\end{align*}
+with $\dim\Ass'=20$, $\dim\Ass=12$, neither element alternative. What alternativity buys is the containment in Theorem~\ref{thm:2}, not the block algebra.
+
+\paragraph{Observed at levels $6$ and $7$.}
+Moreno's parametrisation iterated, integer parameters in $[-2,2]$, standard $Q$. Level~$6$, $2000$ pairs: invariance of $E_6^\perp$, additivity of both kernels, and the block shape $W(f,g)=(Pf+Bg,-Bf+Pg)$ on the top complement ($P,B$ now $4\times 4$ over $\HH$) hold in every case; $\beta_6\in\{0,8,16,32\}$ ($1801$, $8$, $33$, $158$), $\alpha_6\in\{0,8,16,32\}$; $(\dim\Ass'_{E_6},\beta_6)=(12,8)$ occurs, so $\dim\Ass'=20$ arises at level~$6$ with a quarter block ($8$ of $32$). Level~$7$, $400$ pairs: the same structural checks all pass; $\beta_7\in\{0,32,64\}$, $\alpha_7=0$ throughout. The associator does not have the $W$ shape on the top complement once $s$ or $s'$ is nonzero, so no analogue of Theorem~\ref{thm:3} for $\alpha_k$ is offered here.
+
+\paragraph{Status.}
+Theorem~\ref{thm:2}(i)--(iii) is established. At $m=5$ it is self-contained (Lemma~\ref{lem:D} with property (N) from BDI Lemma~8.5 and Theorem~\ref{thm:1}); for $m\ge 6$ the single import is Moreno's Theorem~2.3 at $n\ge 5$, checked in this convention on $812$ elements of $A_5$ and $A_6$. Corollary~\ref{cor:5} is observed at $m=5$, on the basis. Propositions~\ref{prop:6} and~\ref{prop:7} and Theorem~\ref{thm:3} are established, so $\beta_5$ is explicit and the value set of $\dim\Ass'$ at level~$5$ is closed. At levels $6$ and $7$ the block shape and $\beta_k\in 4\mathbb{Z}$ are theorems; the value sets are observed only. The explicit form of $\beta_k$ for $k\ge 6$ and of $\alpha_k$ for $k\ge 5$ is not established. Quaternionic pairs with a non-alternative member at levels $\ge 5$ are not treated beyond the Remark.
+
+\ack
+Generative artificial intelligence tools were used on 3~October 2026 to draft and revise the prose of this article and to propose possible errors in the algebra. The tools were Grok~4.7 (xAI), used through the Cursor editor (\url{https://x.ai}), and, through a private OpenAI-compatible router in the author's laboratory, GLM-5.3 (Z.AI), Qwen3.8-27B and Goedel-Prover-V2-32B. The laboratory router is not a public service. Every algebraic objection was checked by the author against the product \eqref{eq:mul} by exact integer arithmetic, and none survived. The statements, the proofs and the decision of what is established are the author's. No generative model is an author. The C++ programs that perform the exact checks in the Verification section are available from the author and can be supplied as supplementary material if the editor wishes. There was no funding.
+
+\begin{thebibliography}{9}
+\bibitem{bdi}
+D.~K. Biss, D.~Dugger, and D.~C. Isaksen,
+Large annihilators in Cayley--Dickson algebras,
+\emph{Communications in Algebra} \textbf{36} (2008), no.~2, 632--664.
+
+\bibitem{moreno}
+G.~Moreno,
+Alternative elements in the Cayley--Dickson algebras,
+arXiv:math/0404395, 2004.
+\end{thebibliography}
+
+\end{document}

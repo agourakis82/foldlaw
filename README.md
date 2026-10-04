@@ -87,3 +87,11 @@ lake build            # builds Foldlaw and Foldlaw.Birth; prints every #print ax
   (`N_LU_bone`, `N_LU_self`, `N_UU_bone`), the closed per-pair function `birth`, the
   anti-associating-triple reformulation `finrank_ker_WA_eq_N`, the mod-8 law as a per-pair
   theorem, and the formalisation itself.
+
+## Off the basis
+
+`paper/sedenion-birth-note.typ` is the sequel: quaternionic pairs off the basis, through level 5.
+`Foldlaw/Birth.lean` is the basis seal and is not the proof of that note. The note does not
+claim priority. `paper/sedenion-birth-hal.tex` is the preprint source; `paper/sedenion-birth-bams.tex`
+is the Bulletin of the Australian Mathematical Society source (`baustms.cls` is the society's
+class, LPPL). The C++ checks named in the note are in `check/`.

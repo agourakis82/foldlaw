@@ -1,0 +1,126 @@
+bissDuggerIsaksen2008:
+  type: article
+  title: "Large annihilators in Cayley–Dickson algebras"
+  author: ["Biss, Daniel K.", "Dugger, Daniel", "Isaksen, Daniel C."]
+  date: 2008
+  parent:
+    type: periodical
+    title: "Communications in Algebra"
+    volume: 36
+    issue: 2
+  page-range: 632-664
+  serial-number:
+    arxiv: "math/0511691"
+
+zhilina2021a:
+  type: article
+  title: "Orthogonality graphs of real Cayley–Dickson algebras. I: Doubly alternative zero divisors and their hexagons"
+  author: ["Zhilina, Svetlana"]
+  date: 2021
+  parent:
+    type: periodical
+    title: "International Journal of Algebra and Computation"
+    volume: 31
+    issue: 4
+  page-range: 663-689
+  serial-number:
+    doi: "10.1142/S0218196721500326"
+
+zhilina2021b:
+  type: article
+  title: "Orthogonality graphs of real Cayley–Dickson algebras. II: The subgraph on pairs of basis elements"
+  author: ["Zhilina, Svetlana"]
+  date: 2021
+  parent:
+    type: periodical
+    title: "International Journal of Algebra and Computation"
+    volume: 31
+  serial-number:
+    doi: "10.1142/S0218196721500338"
+
+moreno1998:
+  type: article
+  title: "The zero divisors of the Cayley–Dickson algebras over the real numbers"
+  author: ["Moreno, Guillermo"]
+  date: 1998
+  parent:
+    type: periodical
+    title: "Boletín de la Sociedad Matemática Mexicana"
+    volume: 4
+    issue: 1
+  page-range: 13-28
+
+moreno2004alt:
+  type: article
+  title: "Alternative elements in the Cayley–Dickson algebras"
+  author: ["Moreno, Guillermo"]
+  date: 2004
+  serial-number:
+    arxiv: "math/0404395"
+  parent:
+    type: periodical
+    title: "arXiv preprint arXiv:math/0404395"
+
+demarrais2000:
+  type: article
+  title: "The 42 Assessors and the Box-Kites they fly: Diagonal axis-pair systems of zero-divisors in the sedenions' 16 dimensions"
+  author: ["de Marrais, Robert P. C."]
+  date: 2000
+  serial-number:
+    arxiv: "math/0011260"
+  parent:
+    type: periodical
+    title: "arXiv preprint arXiv:math/0011260"
+
+albuquerqueMajid1999:
+  type: article
+  title: "Quasialgebra structure of the octonions"
+  author: ["Albuquerque, Helena", "Majid, Shahn"]
+  date: 1999
+  parent:
+    type: periodical
+    title: "Journal of Algebra"
+    volume: 220
+    issue: 1
+  page-range: 188-224
+
+schafer1954:
+  type: article
+  title: "On the algebras formed by the Cayley–Dickson process"
+  author: ["Schafer, Richard D."]
+  date: 1954
+  parent:
+    type: periodical
+    title: "American Journal of Mathematics"
+    volume: 76
+    issue: 2
+  page-range: 435-446
+
+mathlib2020:
+  type: article
+  title: "The Lean mathematical library"
+  date: 2020
+  parent:
+    type: proceedings
+    title: "Proceedings of the 9th ACM SIGPLAN International Conference on Certified Programs and Proofs (CPP 2020)"
+  page-range: 367-381
+
+deMouraUllrich2021:
+  type: article
+  title: "The Lean 4 theorem prover and programming language"
+  author: ["de Moura, Leonardo", "Ullrich, Sebastian"]
+  date: 2021
+  parent:
+    type: proceedings
+    title: "Automated Deduction – CADE 28"
+    publisher: "Springer"
+  page-range: 625-635
+
+agourakis2026b:
+  type: article
+  title: "Equivariance obstructs the Dual Pathway: a twisted correspondence in sedenion zero divisors"
+  author: ["Agourakis, Demetrios C.", "Gerenutti, Marli"]
+  date: 2026
+  parent:
+    type: periodical
+    title: "Preprint"
